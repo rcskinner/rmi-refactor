@@ -9,7 +9,8 @@ runtime and package manager before adding implementation code or dependencies.
 
 - Read `README.md` and the relevant files in `docs/` before making changes.
 - Prefer small, focused changes that preserve existing behavior.
-- Keep production code in `src/` and automated tests in `tests/`.
+- With Maven, keep production code in `src/main/` and automated tests in
+  `src/test/`. Keep test strategy and supporting documentation in `tests/`.
 - Add or update tests for every behavior change.
 - Do not commit secrets, generated artifacts, local environment files, or build
   output.

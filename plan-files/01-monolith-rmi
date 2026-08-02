@@ -1,0 +1,70 @@
+# Goal
+
+Build a working Java monolith that intentionally demonstrates poor architectural
+choices. This plan defines only the baseline system. A separate plan will
+address its refactoring.
+
+# Intentionally flawed baseline
+
+## Example architecture
+
+![Example Architecture](./img/java-monolith.png)
+
+The baseline should include:
+
+- A Java monolith
+- 401k contributions
+- 401k withdrawals
+- An `LedgerRemote` RMI interface
+- A `LedgerRemote` implementation that communicates with the database
+- Contribution and withdrawal components that call the ledger through RMI
+
+This design is intentionally flawed for the purposes of the exercise. Do not
+correct or refactor these choices in this plan. The goal is to establish a
+working baseline whose limitations can be examined later.
+
+## 401k withdrawals
+
+Provide an operation that withdraws a dollar amount from a particular 401k
+plan. It should subtract from the database through the `LedgerRemote`
+implementation.
+
+## 401k contributions
+
+Provide an operation that contributes a dollar amount to a particular 401k
+plan. It should add to the database through the `LedgerRemote` implementation.
+
+## LedgerRemote
+
+The baseline ledger exposes a generic operation that can add or subtract from a
+plan, such as:
+
+```java
+addOrSubtract(planId, amount, operation)
+```
+
+This is intentionally a poor interface because:
+
+- It uses a generic technical operation.
+- It accepts an operation value that determines whether the balance increases
+  or decreases.
+- It is exposed through RMI.
+- It communicates with the database on behalf of the application components.
+
+# Testing
+
+Create tests that establish the baseline behavior:
+
+- A valid contribution increases the plan balance.
+- A valid withdrawal decreases the plan balance.
+- Negative amounts are rejected.
+- Zero amounts are rejected.
+- A nonexistent `planId` fails clearly.
+- An invalid operation fails clearly.
+- The expected database update occurs.
+- Existing insufficient-balance behavior is recorded.
+- RMI requests and responses can be serialized and invoked successfully.
+- The database connection is mocked for unit tests.
+
+Keep these tests focused on documenting the baseline behavior. Refactoring and
+improvement tests belong in `02-rmi-refactor`.

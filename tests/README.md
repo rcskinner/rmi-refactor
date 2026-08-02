@@ -1,4 +1,4 @@
-# Tests
+# Test documentation
 
-Automated tests belong here. Mirror the public source structure where practical,
-and keep tests deterministic and independent.
+The project uses Maven's conventional `src/test/` directory for automated
+tests. Keep test strategy, fixtures, and supporting documentation here.

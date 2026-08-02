@@ -2,13 +2,15 @@
 
 ## Status
 
-Initial scaffold. No implementation language, runtime, persistence layer, or
-deployment target has been selected.
+The repository currently contains the intentionally flawed Java 17/Maven
+baseline described in `plan-files/01-monolith-rmi`. It uses Java RMI and an
+in-memory database stand-in. The concurrency limitation in that baseline is
+documented in `baseline-concurrency.md`.
 
 ## Decisions to make
 
-- Language and runtime
-- Package manager and dependency policy
+- Refactored language and runtime boundaries
+- Dependency and package policy
 - Application or library boundaries
 - Public API and compatibility requirements
 - Configuration and environment handling
