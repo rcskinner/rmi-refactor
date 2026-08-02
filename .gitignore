@@ -1,0 +1,33 @@
+# Operating-system files
+.DS_Store
+Thumbs.db
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+*.local
+
+# Editors
+.idea/
+.vscode/
+*.swp
+
+# Common build and test output
+build/
+dist/
+coverage/
+out/
+tmp/
+*.log
+
+# Dependency caches
+.cache/
+node_modules/
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+
+# Generated project-local artifacts
+.factory/artifacts/
