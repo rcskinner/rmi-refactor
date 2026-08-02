@@ -2,14 +2,21 @@
 
 Project workspace for the RMI refactor.
 
+The current implementation is the intentionally flawed baseline described in
+`plan-files/01-monolith-rmi`. It uses Java RMI inside a monolith and exposes the
+generic `LedgerRemote.addOrSubtract(...)` operation. The follow-up refactor is
+planned separately.
+
 ## Repository layout
 
 ```text
 .
 ├── docs/                 Design notes and decision records
-├── scripts/              Repeatable local development utilities
-├── src/                  Application and library source code
-├── tests/                Automated tests
+├── plan-files/           Implementation plans and architecture sketches
+├── src/main/             Application and library source code
+├── src/test/             Automated tests
+├── tests/                Test documentation
+├── pom.xml               Maven build configuration
 ├── AGENTS.md             Instructions for Droid-assisted development
 ├── CONTRIBUTING.md       Contribution and review workflow
 └── .gitignore
@@ -17,16 +24,43 @@ Project workspace for the RMI refactor.
 
 ## Getting started
 
-The runtime and package manager have not been selected yet. Before implementing
-features, record that choice in `docs/architecture.md`, then add the relevant
-dependency manifest and commands to this README.
+The baseline uses Java 17 and Maven.
 
-Recommended first steps:
+Run the tests:
 
-1. Define the language, runtime, and package manager.
-2. Add the minimal build, test, and lint commands.
-3. Create the first vertical slice under `src/`.
-4. Add tests under `tests/` for the public behavior.
+```shell
+mvn test
+```
+
+Run tests and the Java linter:
+
+```shell
+mvn verify
+```
+
+Checkstyle runs during Maven's `verify` phase and checks production and test
+sources for import hygiene, whitespace consistency, visibility, brace usage,
+and common Java correctness issues. Its configuration is in
+`config/checkstyle/checkstyle.xml`.
+
+Start the example RMI server:
+
+```shell
+mvn compile
+java -cp target/classes com.example.rmirefactor.server.RmiServer
+```
+
+In a second terminal, interact with the running server:
+
+```shell
+java -cp target/classes com.example.rmirefactor.client.RmiClient balance demo-plan
+java -cp target/classes com.example.rmirefactor.client.RmiClient contribute demo-plan 100.00
+java -cp target/classes com.example.rmirefactor.client.RmiClient withdraw demo-plan 25.00
+java -cp target/classes com.example.rmirefactor.client.RmiClient balance demo-plan
+```
+
+The client connects to `localhost:1099`, which is the registry started by
+`RmiServer`.
 
 ## Droid workflow
 

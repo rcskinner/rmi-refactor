@@ -19,6 +19,7 @@ dist/
 coverage/
 out/
 tmp/
+target/
 *.log
 
 # Dependency caches
