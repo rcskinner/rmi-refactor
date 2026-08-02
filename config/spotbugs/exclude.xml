@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FindBugsFilter>
+    <!-- These classes intentionally retain a remote-service dependency to delegate calls. -->
+    <Match>
+        <Class name="com.example.rmirefactor.contribution.Contribution"/>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+    </Match>
+    <Match>
+        <Class name="com.example.rmirefactor.withdrawal.Withdrawal"/>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+    </Match>
+</FindBugsFilter>

@@ -26,6 +26,13 @@ jobs:
       - name: Run tests, lint, and coverage gate
         run: mvn --batch-mode verify -Dsurefire.rerunFailingTestsCount=1
 
+      - name: Check dependency usage
+        run: mvn --batch-mode dependency:analyze -DfailOnWarning=true
+
+      - name: Check TODO references
+        shell: bash
+        run: ./scripts/check-todo-references.sh
+
       - name: Upload test and coverage reports
         if: always()
         uses: actions/upload-artifact@v4
