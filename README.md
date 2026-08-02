@@ -43,6 +43,10 @@ sources for import hygiene, whitespace consistency, visibility, brace usage,
 and common Java correctness issues. Its configuration is in
 `config/checkstyle/checkstyle.xml`.
 
+The same command enforces a 60% line-coverage minimum with JaCoCo. GitHub
+Actions runs `mvn verify` on pushes to `main` and pull requests, retries a
+failed test once, and uploads Surefire and JaCoCo reports for diagnosis.
+
 Start the example RMI server:
 
 ```shell
