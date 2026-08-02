@@ -46,6 +46,10 @@ and common Java correctness issues. Its configuration is in
 The same command enforces a 60% line-coverage minimum with JaCoCo. GitHub
 Actions runs `mvn verify` on pushes to `main` and pull requests, retries a
 failed test once, and uploads Surefire and JaCoCo reports for diagnosis.
+The build also generates Javadoc and runs SpotBugs. Dependency usage and
+TODO/FIXME issue references are checked in CI, while Gitleaks scans repository
+history for secrets. Dependabot checks Maven and GitHub Actions dependencies
+weekly.
 
 Start the example RMI server:
 
