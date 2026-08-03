@@ -50,9 +50,11 @@ The build also generates Javadoc and runs SpotBugs. Dependency usage and
 TODO/FIXME issue references are checked in CI, while Gitleaks scans repository
 history for secrets. Dependabot checks Maven and GitHub Actions dependencies
 weekly with a seven-day cooldown. CodeQL scans Java code on pull requests,
-pushes to `main`, and a weekly schedule. See `docs/security.md` for secret
-handling and log-scrubbing guidance. `.env.example` documents the local
-environment template; it currently contains no secrets.
+pushes to `main`, and a weekly schedule. PMD and CPD check maintainability,
+complexity, and duplication during `mvn verify`. CI also rejects Java source
+files over 1,200 lines. See `docs/security.md` for secret handling and
+log-scrubbing guidance. `.env.example` documents the local environment
+template; it currently contains no secrets.
 
 Start the example RMI server:
 
