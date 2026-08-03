@@ -43,9 +43,16 @@ sources for import hygiene, whitespace consistency, visibility, brace usage,
 and common Java correctness issues. Its configuration is in
 `config/checkstyle/checkstyle.xml`.
 
+Spotless checks Java formatting with Google Java Format during `mvn verify`.
+Run `mvn spotless:apply` to format sources locally. If pre-commit is
+installed, `.pre-commit-config.yaml` runs the formatter check and unit tests
+before commits. From WSL Bash, install it with
+`./scripts/setup-pre-commit.sh`.
+
 The same command enforces a 60% line-coverage minimum with JaCoCo. GitHub
-Actions runs `mvn verify` on pushes to `main` and pull requests, retries a
-failed test once, and uploads Surefire and JaCoCo reports for diagnosis.
+Actions runs the pre-commit hooks and `mvn verify` on pushes to `main` and pull
+requests, retries a failed test once, and uploads Surefire and JaCoCo reports
+for diagnosis.
 The build also generates Javadoc and runs SpotBugs. Dependency usage and
 TODO/FIXME issue references are checked in CI, while Gitleaks scans repository
 history for secrets. Dependabot checks Maven and GitHub Actions dependencies
