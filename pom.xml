@@ -18,6 +18,7 @@
         <javadoc.version>3.7.0</javadoc.version>
         <spotbugs.version>4.8.6.6</spotbugs.version>
         <pmd.version>3.25.0</pmd.version>
+        <spotless.version>2.44.0</spotless.version>
     </properties>
 
     <dependencies>
@@ -37,6 +38,31 @@
 
     <build>
         <plugins>
+            <plugin>
+                <groupId>com.diffplug.spotless</groupId>
+                <artifactId>spotless-maven-plugin</artifactId>
+                <version>${spotless.version}</version>
+                <configuration>
+                    <java>
+                        <googleJavaFormat>
+                            <version>1.22.0</version>
+                        </googleJavaFormat>
+                        <includes>
+                            <include>src/main/java/**/*.java</include>
+                            <include>src/test/java/**/*.java</include>
+                        </includes>
+                    </java>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>spotless-verify</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>

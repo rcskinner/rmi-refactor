@@ -18,6 +18,9 @@ runtime and package manager before adding implementation code or dependencies.
 - Before finishing, run the narrowest applicable formatter, linter, type check,
   and test command. If the project has no tooling yet, say so explicitly.
 - Review `git diff` and `git status` before handing work back.
+- Java formatting is checked with `mvn spotless:check`; use
+  `mvn spotless:apply` to format sources. The committed pre-commit
+  configuration runs the formatter check and unit tests.
 
 ## Task workflow
 

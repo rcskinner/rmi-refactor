@@ -1,0 +1,13 @@
+repos:
+  - repo: local
+    hooks:
+      - id: java-format
+        name: Check Java formatting
+        entry: mvn --batch-mode spotless:check
+        language: system
+        pass_filenames: false
+      - id: java-validation
+        name: Run Java validation
+        entry: mvn --batch-mode test
+        language: system
+        pass_filenames: false
