@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <appender name="JSON" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
+            <providers>
+                <timestamp>
+                    <fieldName>@timestamp</fieldName>
+                </timestamp>
+                <logLevel>
+                    <fieldName>level</fieldName>
+                </logLevel>
+                <loggerName>
+                    <fieldName>logger</fieldName>
+                </loggerName>
+                <threadName>
+                    <fieldName>thread</fieldName>
+                </threadName>
+                <mdc/>
+                <message>
+                    <fieldName>message</fieldName>
+                </message>
+                <stackTrace>
+                    <fieldName>stack_trace</fieldName>
+                </stackTrace>
+            </providers>
+            <jsonGeneratorDecorator class="net.logstash.logback.mask.MaskingJsonGeneratorDecorator">
+                <!-- Default replacement for masked field values -->
+                <defaultMask>****</defaultMask>
+
+                <!-- Field-level masking: mask entire values at these JSON paths -->
+                <path>password</path>
+                <path>token</path>
+                <path>access_token</path>
+                <path>authorization</path>
+                <path>private_key</path>
+                <path>connection_string</path>
+                <path>email</path>
+                <path>secret</path>
+                <path>api_key</path>
+
+                <!-- Regex masks for common secret patterns in any string value -->
+                <valueMask>
+                    <value>(?i)password\s*[=:]\s*\S+</value>
+                    <mask>password=****</mask>
+                </valueMask>
+                <valueMask>
+                    <value>(?i)token\s*[=:]\s*\S+</value>
+                    <mask>token=****</mask>
+                </valueMask>
+                <valueMask>
+                    <value>(?i)access_token\s*[=:]\s*\S+</value>
+                    <mask>access_token=****</mask>
+                </valueMask>
+                <valueMask>
+                    <value>(?i)api[_-]?key\s*[=:]\s*\S+</value>
+                    <mask>api_key=****</mask>
+                </valueMask>
+                <valueMask>
+                    <value>(?i)secret\s*[=:]\s*\S+</value>
+                    <mask>secret=****</mask>
+                </valueMask>
+                <valueMask>
+                    <value>(?i)authorization\s*[=:]\s*\S+</value>
+                    <mask>authorization=****</mask>
+                </valueMask>
+                <valueMask>
+                    <value>(?i)connection[_-]?string\s*[=:]\s*\S+</value>
+                    <mask>connection_string=****</mask>
+                </valueMask>
+                <valueMask>
+                    <value>(?i)bearer\s+[A-Za-z0-9\-_.=]+</value>
+                    <mask>bearer ****</mask>
+                </valueMask>
+                <valueMask>
+                    <value>-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----</value>
+                    <mask>[REDACTED PRIVATE KEY]</mask>
+                </valueMask>
+                <valueMask>
+                    <value>[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}</value>
+                    <mask>[REDACTED EMAIL]</mask>
+                </valueMask>
+            </jsonGeneratorDecorator>
+        </encoder>
+    </appender>
+
+    <root level="INFO">
+        <appender-ref ref="JSON"/>
+    </root>
+</configuration>

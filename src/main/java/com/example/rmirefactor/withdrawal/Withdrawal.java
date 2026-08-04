@@ -5,8 +5,12 @@ import com.example.rmirefactor.ledger.LedgerOperation;
 import com.example.rmirefactor.ledger.LedgerRemote;
 import java.math.BigDecimal;
 import java.rmi.RemoteException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class Withdrawal {
+  private static final Logger LOG = LoggerFactory.getLogger(Withdrawal.class);
+
   private final LedgerRemote ledger;
 
   public Withdrawal(LedgerRemote ledger) {
@@ -14,6 +18,13 @@ public class Withdrawal {
   }
 
   public void withdraw(String planId, BigDecimal amount) throws RemoteException, LedgerException {
-    ledger.addOrSubtract(planId, amount, LedgerOperation.SUBTRACT);
+    LOG.info("event=operation.started operation=withdraw planId={}", planId);
+    try {
+      ledger.addOrSubtract(planId, amount, LedgerOperation.SUBTRACT);
+      LOG.info("event=operation.completed operation=withdraw planId={}", planId);
+    } catch (RemoteException | LedgerException e) {
+      LOG.error("event=operation.failed operation=withdraw planId={}", planId, e);
+      throw e;
+    }
   }
 }
