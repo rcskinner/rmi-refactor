@@ -1,5 +1,7 @@
 package com.example.rmirefactor.ledger;
 
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.math.BigDecimal;
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
@@ -14,10 +16,17 @@ public class LedgerRemoteImpl extends UnicastRemoteObject implements LedgerRemot
   private static final Logger LOG = LoggerFactory.getLogger(LedgerRemoteImpl.class);
 
   private final DatabaseConnection database;
+  private final MeterRegistry meterRegistry;
 
   public LedgerRemoteImpl(DatabaseConnection database) throws RemoteException {
+    this(database, new SimpleMeterRegistry());
+  }
+
+  public LedgerRemoteImpl(DatabaseConnection database, MeterRegistry meterRegistry)
+      throws RemoteException {
     super();
     this.database = database;
+    this.meterRegistry = meterRegistry;
   }
 
   @Override
