@@ -1,6 +1,9 @@
 package com.example.rmirefactor.observability;
 
 import io.micrometer.core.instrument.Clock;
+import io.micrometer.core.instrument.binder.jvm.JvmGcMetrics;
+import io.micrometer.core.instrument.binder.jvm.JvmMemoryMetrics;
+import io.micrometer.core.instrument.binder.jvm.JvmThreadMetrics;
 import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
 import io.micrometer.datadog.DatadogConfig;
 import io.micrometer.datadog.DatadogMeterRegistry;
@@ -73,6 +76,11 @@ public final class ObservabilityInitializer {
 
     CompositeMeterRegistry composite = new CompositeMeterRegistry();
     composite.add(prometheusRegistry);
+
+    // Bind JVM metrics (memory, GC, threads) to the composite so all backends receive them
+    new JvmMemoryMetrics().bindTo(composite);
+    new JvmGcMetrics().bindTo(composite);
+    new JvmThreadMetrics().bindTo(composite);
 
     String backend = resolveBackend(metricsBackend);
     boolean datadogConfigured =

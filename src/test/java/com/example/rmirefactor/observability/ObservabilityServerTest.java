@@ -211,6 +211,29 @@ class ObservabilityServerTest {
   }
 
   @Test
+  void getMetricsContentTypeIncludesPrometheusVersion() throws Exception {
+    HttpResponse<String> response = sendGet("/metrics");
+
+    String contentType = response.headers().firstValue("Content-Type").orElse("");
+    assertTrue(
+        contentType.contains("version=0.0.4"),
+        "Metrics Content-Type should include version=0.0.4, got: " + contentType);
+  }
+
+  @Test
+  void getMetricsReturnsParseablePrometheusExposition() throws Exception {
+    prometheusRegistry.counter("test.counter", "tag", "value").increment();
+
+    HttpResponse<String> response = sendGet("/metrics");
+
+    assertEquals(200, response.statusCode());
+    String body = response.body();
+    assertTrue(
+        body.contains("# TYPE") || body.contains("# HELP"),
+        "Prometheus scrape should contain TYPE or HELP metadata lines");
+  }
+
+  @Test
   void getMetricsHasNoStoreCacheControl() throws Exception {
     HttpResponse<String> response = sendGet("/metrics");
     assertEquals("no-store", response.headers().firstValue("Cache-Control").orElse(""));
@@ -220,6 +243,51 @@ class ObservabilityServerTest {
   void postOnMetricsReturns405() throws Exception {
     HttpResponse<String> response = sendPost("/metrics");
     assertEquals(405, response.statusCode());
+  }
+
+  @Test
+  void putOnMetricsReturns405() throws Exception {
+    HttpResponse<String> response = sendMethod("/metrics", "PUT");
+    assertEquals(405, response.statusCode());
+  }
+
+  @Test
+  void deleteOnMetricsReturns405() throws Exception {
+    HttpResponse<String> response = sendMethod("/metrics", "DELETE");
+    assertEquals(405, response.statusCode());
+  }
+
+  @Test
+  void metricsEndpointReflectsCustomOperationMeters() throws Exception {
+    prometheusRegistry
+        .counter("rmi_operations_total", "operation", "add", "result", "success")
+        .increment();
+    prometheusRegistry
+        .timer("rmi_operation_duration", "operation", "add")
+        .record(java.time.Duration.ofMillis(5));
+
+    HttpResponse<String> response = sendGet("/metrics");
+    String body = response.body();
+    assertTrue(
+        body.contains("rmi_operations_total"), "Should contain rmi_operations_total counter");
+    assertTrue(
+        body.contains("rmi_operation_duration"), "Should contain rmi_operation_duration timer");
+    assertTrue(
+        body.contains("operation=\"add\""), "Should contain operation tag for add operation");
+    assertTrue(body.contains("result=\"success\""), "Should contain result tag for success result");
+  }
+
+  @Test
+  void metricsEndpointReflectsInFlightGauge() throws Exception {
+    java.util.concurrent.atomic.AtomicInteger inFlight =
+        new java.util.concurrent.atomic.AtomicInteger(3);
+    prometheusRegistry.gauge("rmi_operations_in_flight", inFlight);
+
+    HttpResponse<String> response = sendGet("/metrics");
+    String body = response.body();
+    assertTrue(
+        body.contains("rmi_operations_in_flight"), "Should contain rmi_operations_in_flight gauge");
+    assertTrue(body.contains("3.0"), "Gauge should report value 3");
   }
 
   @Test
