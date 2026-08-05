@@ -26,6 +26,7 @@ import io.opentelemetry.sdk.trace.data.SpanData;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.math.BigDecimal;
+import java.net.ServerSocket;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -55,8 +56,6 @@ import org.slf4j.LoggerFactory;
 @Timeout(30)
 @SuppressWarnings("PMD.TooManyMethods")
 class ObservabilityStackIntegrationTest {
-  private static final int TEST_RMI_PORT = 12093;
-
   @RegisterExtension static final OpenTelemetryExtension otel = OpenTelemetryExtension.create();
 
   private PrometheusMeterRegistry prometheusRegistry;
@@ -68,6 +67,8 @@ class ObservabilityStackIntegrationTest {
   private Registry registry;
 
   private LedgerRemoteImpl ledger;
+
+  private int testRmiPort;
 
   private HttpClient httpClient;
 
@@ -93,7 +94,8 @@ class ObservabilityStackIntegrationTest {
     database.createPlan("demo-plan", new BigDecimal("100.00"));
     ledger = new LedgerRemoteImpl(database, compositeRegistry, tracer);
 
-    registry = LocateRegistry.createRegistry(TEST_RMI_PORT);
+    testRmiPort = findAvailablePort();
+    registry = LocateRegistry.createRegistry(testRmiPort);
     registry.rebind("LedgerRemote", ledger);
 
     healthServer = new ObservabilityServer(prometheusRegistry, 8081);
@@ -260,9 +262,15 @@ class ObservabilityStackIntegrationTest {
     ByteArrayOutputStream stdoutBuffer = new ByteArrayOutputStream();
     System.setOut(new PrintStream(stdoutBuffer, true, StandardCharsets.UTF_8));
     try {
-      RmiClient.main(args, "localhost", TEST_RMI_PORT);
+      RmiClient.main(args, "localhost", testRmiPort);
     } finally {
       System.setOut(originalOut);
+    }
+  }
+
+  private static int findAvailablePort() throws Exception {
+    try (ServerSocket socket = new ServerSocket(0)) {
+      return socket.getLocalPort();
     }
   }
 

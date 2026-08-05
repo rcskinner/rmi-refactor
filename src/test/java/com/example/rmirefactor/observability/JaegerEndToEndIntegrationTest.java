@@ -24,6 +24,7 @@ import io.opentelemetry.context.Context;
 import io.opentelemetry.context.Scope;
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.net.ServerSocket;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -58,8 +59,6 @@ import org.slf4j.LoggerFactory;
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @SuppressWarnings({"PMD.TooManyMethods", "PMD.CyclomaticComplexity"})
 class JaegerEndToEndIntegrationTest {
-  private static final int TEST_RMI_PORT = 12094;
-
   private static final String JAEGER_API = "http://localhost:16686";
 
   private static final String OTLP_ENDPOINT = "http://localhost:4317";
@@ -77,6 +76,8 @@ class JaegerEndToEndIntegrationTest {
   private static ObservabilityServer healthServer;
 
   private static Registry registry;
+
+  private static int testRmiPort;
 
   private static LedgerRemoteImpl ledger;
 
@@ -104,7 +105,8 @@ class JaegerEndToEndIntegrationTest {
     database.createPlan("demo-plan", new BigDecimal("100.00"));
 
     ledger = new LedgerRemoteImpl(database, serverCtx.getMeterRegistry(), serverCtx.getTracer());
-    registry = LocateRegistry.createRegistry(TEST_RMI_PORT);
+    testRmiPort = findAvailablePort();
+    registry = LocateRegistry.createRegistry(testRmiPort);
     registry.rebind("LedgerRemote", ledger);
 
     healthServer = new ObservabilityServer(prometheusRegistry, 8081);
@@ -140,6 +142,12 @@ class JaegerEndToEndIntegrationTest {
     logAppender = new ListAppender<>();
     logAppender.start();
     ledgerLogger.addAppender(logAppender);
+  }
+
+  private static int findAvailablePort() throws Exception {
+    try (ServerSocket socket = new ServerSocket(0)) {
+      return socket.getLocalPort();
+    }
   }
 
   @AfterAll
