@@ -1,0 +1,61 @@
+project: rmi-refactor
+imagemagick: false
+
+environments:
+  local:
+    url: http://127.0.0.1:8081
+    restrictions:
+      - "Loopback only; do not target production services."
+      - "Start Jaeger on ports 16686, 4317, and 4318 before trace checks."
+
+default_target: local
+
+auth:
+  method: none
+  provider: none
+
+personas:
+  - name: operator
+    description: "Runs the RMI client against the local ledger server."
+    credentials_source: none
+    test_focus: [cli, health, metrics, tracing]
+    cannot_do: []
+
+apps:
+  cli:
+    path_patterns: ["src/main/java/com/example/rmirefactor/client/**"]
+    skill: qa-cli
+    test_tool: curl
+    build_command: "mvn compile"
+  http:
+    path_patterns: ["src/main/java/com/example/rmirefactor/observability/**"]
+    skill: qa-http
+    test_tool: curl
+    build_command: "mvn compile"
+  observability:
+    path_patterns:
+      - "src/main/java/com/example/rmirefactor/observability/**"
+      - "src/main/java/com/example/rmirefactor/ledger/**"
+      - "src/main/java/com/example/rmirefactor/server/**"
+      - "src/main/java/com/example/rmirefactor/client/**"
+    skill: qa-observability
+    test_tool: curl
+    build_command: "mvn compile"
+
+feature_flags:
+  provider: none
+  dashboard_url: ""
+  how_to_override: "Not applicable."
+
+integrations:
+  tracing:
+    provider: Jaeger
+    api_url: http://localhost:16686
+    otlp_grpc: http://localhost:4317
+
+cleanup:
+  auto_cleanup: true
+  strategy: none
+  instructions: "Use the service stop commands from services.yaml; do not kill unrelated processes."
+
+failure_learning: suggest_in_report

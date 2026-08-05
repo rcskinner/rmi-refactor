@@ -1,0 +1,93 @@
+name: Functional QA
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: qa-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      - name: Start Jaeger
+        run: |
+          docker run --rm --name jaeger -d \
+            -p 16686:16686 -p 4317:4317 -p 4318:4318 \
+            jaegertracing/all-in-one:1.76.0
+
+      - name: Build and prepare dependencies
+        run: |
+          mvn --batch-mode compile
+          mvn --batch-mode dependency:copy-dependencies -DoutputDirectory=target/dependency
+
+      - name: Start RMI server
+        run: |
+          nohup java -cp "target/classes:target/dependency/*" \
+            com.example.rmirefactor.server.RmiServer \
+            > target/server-stdout.log 2> target/server-stderr.log &
+          echo $! > target/rmi-server.pid
+
+      - name: Wait for observability server
+        run: |
+          for attempt in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:8081/health/live; then exit 0; fi
+            sleep 1
+          done
+          cat target/server-stderr.log
+          exit 1
+
+      - name: Install Factory CLI
+        run: curl -fsSL https://app.factory.ai/cli | sh
+
+      - name: Run functional QA
+        id: qa
+        continue-on-error: true
+        timeout-minutes: 18
+        env:
+          CI: true
+        run: |
+          mkdir -p qa-results
+          droid exec --auto high \
+            "You are running in a non-interactive CI environment. There is no human available. Do not use AskUser or wait for confirmation. Run the qa skill, exercise the affected CLI, HTTP, and Jaeger API flows, and write the final report to qa-results/report.md."
+
+      - name: Upload QA evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qa-results
+          path: |
+            qa-results/
+            target/server-stdout.log
+            target/server-stderr.log
+          if-no-files-found: warn
+
+      - name: Stop services
+        if: always()
+        run: |
+          if [ -f target/rmi-server.pid ]; then kill "$(cat target/rmi-server.pid)" || true; fi
+          docker stop jaeger || true
+
+      - name: Fail when QA failed
+        if: steps.qa.outcome == 'failure'
+        run: exit 1
