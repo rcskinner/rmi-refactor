@@ -41,11 +41,11 @@ jobs:
 
       - name: Check TODO references
         shell: bash
-        run: ./scripts/check-todo-references.sh
+        run: bash ./scripts/check-todo-references.sh
 
       - name: Check Java file sizes
         shell: bash
-        run: ./scripts/check-file-size.sh
+        run: bash ./scripts/check-file-size.sh
 
       - name: Upload test and coverage reports
         if: always()
