@@ -65,50 +65,44 @@ jobs:
       - name: Run functional QA
         id: qa
         continue-on-error: true
-        if: ${{ secrets.FACTORY_API_KEY != '' }}
         timeout-minutes: 18
         env:
           CI: true
           OTEL_SERVICE_NAME: ledger-cli
           FACTORY_API_KEY: ${{ secrets.FACTORY_API_KEY }}
         run: |
-          mkdir -p qa-results
-          droid exec --auto high \
-            "You are running in a non-interactive CI environment. There is no human available. Do not use AskUser or wait for confirmation. Run the qa skill, exercise the affected CLI, HTTP, and Jaeger API flows, and write the final report to qa-results/report.md."
-
-      - name: Run deterministic smoke QA
-        id: qa-fallback
-        if: ${{ secrets.FACTORY_API_KEY == '' }}
-        env:
-          OTEL_SERVICE_NAME: ledger-cli
-        run: |
           set -euo pipefail
           mkdir -p qa-results
-          live="$(curl --fail --silent http://127.0.0.1:8081/health/live)"
-          ready="$(curl --fail --silent http://127.0.0.1:8081/health/ready)"
-          grep -q '"status":"UP"' <<< "$live"
-          grep -q '"status":"UP"' <<< "$ready"
+          if [[ -n "${FACTORY_API_KEY:-}" ]]; then
+            droid exec --auto high \
+              "You are running in a non-interactive CI environment. There is no human available. Do not use AskUser or wait for confirmation. Run the qa skill, exercise the affected CLI, HTTP, and Jaeger API flows, and write the final report to qa-results/report.md."
+          else
+            live="$(curl --fail --silent http://127.0.0.1:8081/health/live)"
+            ready="$(curl --fail --silent http://127.0.0.1:8081/health/ready)"
+            grep -q '"status":"UP"' <<< "$live"
+            grep -q '"status":"UP"' <<< "$ready"
 
-          classpath="target/classes:target/dependency/*"
-          contribute="$(java -cp "$classpath" com.example.rmirefactor.client.RmiClient contribute demo-plan 100.00)"
-          withdraw="$(java -cp "$classpath" com.example.rmirefactor.client.RmiClient withdraw demo-plan 25.00)"
-          balance="$(java -cp "$classpath" com.example.rmirefactor.client.RmiClient balance demo-plan)"
-          grep -q 'Contributed 100.00 to demo-plan' <<< "$contribute"
-          grep -q 'Withdrew 25.00 from demo-plan' <<< "$withdraw"
-          grep -q 'Balance for demo-plan: 75.00' <<< "$balance"
+            classpath="target/classes:target/dependency/*"
+            contribute="$(java -cp "$classpath" com.example.rmirefactor.client.RmiClient contribute demo-plan 100.00)"
+            withdraw="$(java -cp "$classpath" com.example.rmirefactor.client.RmiClient withdraw demo-plan 25.00)"
+            balance="$(java -cp "$classpath" com.example.rmirefactor.client.RmiClient balance demo-plan)"
+            grep -q 'Contributed 100.00 to demo-plan' <<< "$contribute"
+            grep -q 'Withdrew 25.00 from demo-plan' <<< "$withdraw"
+            grep -q 'Balance for demo-plan: 75.00' <<< "$balance"
 
-          metrics="$(curl --fail --silent http://127.0.0.1:8081/metrics)"
-          grep -q 'rmi_operations_total' <<< "$metrics"
-          services="$(curl --fail --silent http://127.0.0.1:16686/api/services)"
-          grep -q '"data"' <<< "$services"
-          {
-            echo "# Deterministic smoke QA"
-            echo
-            echo "- Health liveness and readiness: passed"
-            echo "- Prometheus metrics endpoint: passed"
-            echo "- CLI contribute, withdraw, and balance flow: passed"
-            echo "- Jaeger services API: passed"
-          } > qa-results/report.md
+            metrics="$(curl --fail --silent http://127.0.0.1:8081/metrics)"
+            grep -q 'rmi_operations_total' <<< "$metrics"
+            services="$(curl --fail --silent http://127.0.0.1:16686/api/services)"
+            grep -q '"data"' <<< "$services"
+            {
+              echo "# Deterministic smoke QA"
+              echo
+              echo "- Health liveness and readiness: passed"
+              echo "- Prometheus metrics endpoint: passed"
+              echo "- CLI contribute, withdraw, and balance flow: passed"
+              echo "- Jaeger services API: passed"
+            } > qa-results/report.md
+          fi
 
       - name: Upload QA evidence
         if: always()
@@ -128,5 +122,5 @@ jobs:
           docker stop jaeger || true
 
       - name: Fail when QA failed
-        if: steps.qa.outcome == 'failure' || steps.qa-fallback.outcome == 'failure'
+        if: steps.qa.outcome == 'failure'
         run: exit 1
