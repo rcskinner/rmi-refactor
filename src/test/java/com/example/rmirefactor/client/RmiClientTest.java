@@ -8,6 +8,9 @@ import com.example.rmirefactor.ledger.LedgerRemoteImpl;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
@@ -43,6 +46,31 @@ class RmiClientTest {
   }
 
   @Test
+  void keepsUserFacingOutputOnStdoutWithoutJsonLogLines() throws Exception {
+    String logbackConfiguration =
+        Files.readString(
+            Path.of("src", "main", "resources", "logback.xml"), StandardCharsets.UTF_8);
+    assertTrue(
+        logbackConfiguration.contains("<target>System.err</target>"),
+        "JSON logs must be configured for stderr");
+
+    PrintStream originalOut = System.out;
+    ByteArrayOutputStream outContent = new ByteArrayOutputStream();
+    System.setOut(new PrintStream(outContent, true, StandardCharsets.UTF_8));
+    try {
+      RmiClient.main(new String[] {"balance", "plan-1"});
+    } finally {
+      System.setOut(originalOut);
+    }
+
+    String stdout = outContent.toString(StandardCharsets.UTF_8);
+    assertTrue(stdout.contains("Balance for plan-1:"), "stdout should contain the client result");
+    assertFalse(
+        stdout.lines().anyMatch(line -> line.trim().startsWith("{")),
+        "stdout must not contain JSON log lines");
+  }
+
+  @Test
   void printsUsageWhenArgumentsAreMissing() throws Exception {
     RmiClient.main(new String[] {"balance"});
   }
@@ -66,8 +94,10 @@ class RmiClientTest {
     String stderr = errContent.toString();
     assertTrue(stdout.contains("Error:"), "stdout should contain user-friendly error message");
     assertFalse(
-        stderr.contains("Exception") || stderr.contains("at com.example"),
-        "stderr should not contain stack traces");
+        stdout.contains("Exception") || stdout.contains("at com.example"),
+        "stdout should not contain stack traces");
+    assertTrue(
+        stderr.contains("\"level\":\"ERROR\""), "stderr should contain structured error logs");
   }
 
   @Test
@@ -89,8 +119,10 @@ class RmiClientTest {
     String stderr = errContent.toString();
     assertTrue(stdout.contains("Error:"), "stdout should contain user-friendly error message");
     assertFalse(
-        stderr.contains("Exception") || stderr.contains("at com.example"),
-        "stderr should not contain stack traces");
+        stdout.contains("Exception") || stdout.contains("at com.example"),
+        "stdout should not contain stack traces");
+    assertTrue(
+        stderr.contains("\"level\":\"ERROR\""), "stderr should contain structured error logs");
     assertFalse(
         stdout.contains("nonexistent-plan-12345"),
         "stdout should not contain raw planId in error message");
