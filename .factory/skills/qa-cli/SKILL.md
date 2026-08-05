@@ -10,6 +10,8 @@ description: >
 Build with `mvn compile`. Start the `rmi-server` service from `services.yaml`,
 then run the client with:
 `java -cp "target/classes;target/dependency/*" com.example.rmirefactor.client.RmiClient`.
+On Windows, classpath entries use `;`; on Linux and other Unix-like systems,
+use `:` instead.
 
 ## Flow menu
 

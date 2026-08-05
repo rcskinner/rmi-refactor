@@ -25,7 +25,7 @@ apps:
   cli:
     path_patterns: ["src/main/java/com/example/rmirefactor/client/**"]
     skill: qa-cli
-    test_tool: curl
+    test_tool: process-execution
     build_command: "mvn compile"
   http:
     path_patterns: ["src/main/java/com/example/rmirefactor/observability/**"]

@@ -42,6 +42,8 @@ jobs:
           mvn --batch-mode dependency:copy-dependencies -DoutputDirectory=target/dependency
 
       - name: Start RMI server
+        env:
+          OTEL_SERVICE_NAME: ledger-server
         run: |
           nohup java -cp "target/classes:target/dependency/*" \
             com.example.rmirefactor.server.RmiServer \
@@ -66,6 +68,7 @@ jobs:
         timeout-minutes: 18
         env:
           CI: true
+          OTEL_SERVICE_NAME: ledger-cli
         run: |
           mkdir -p qa-results
           droid exec --auto high \
