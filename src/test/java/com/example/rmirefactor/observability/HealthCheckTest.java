@@ -37,6 +37,7 @@ class HealthCheckTest {
 
   private static final class StubHealthCheck implements HealthCheck {
     private final String name;
+
     private final boolean healthy;
 
     StubHealthCheck(String name, boolean healthy) {

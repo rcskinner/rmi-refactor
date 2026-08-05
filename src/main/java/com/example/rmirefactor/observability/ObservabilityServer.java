@@ -2,6 +2,7 @@ package com.example.rmirefactor.observability;
 
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import io.micrometer.prometheusmetrics.PrometheusMeterRegistry;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -27,18 +28,23 @@ import org.slf4j.LoggerFactory;
  * <p>All non-GET methods return 405. Health responses include {@code Cache-Control: no-store} and
  * {@code Content-Type: application/json}.
  */
+@SuppressWarnings("PMD.CyclomaticComplexity")
 public final class ObservabilityServer {
 
   private static final Logger LOG = LoggerFactory.getLogger(ObservabilityServer.class);
 
   private static final String CONTENT_TYPE_JSON = "application/json";
+
   private static final String CONTENT_TYPE_PROMETHEUS = "text/plain; version=0.0.4; charset=utf-8";
+
   private static final String CACHE_CONTROL_NO_STORE = "no-store";
 
   private static final String LOOPBACK_HOST = "127.0.0.1";
 
   private final HttpServer server;
+
   private final List<HealthCheck> healthChecks;
+
   private final PrometheusMeterRegistry prometheusRegistry;
 
   /**
@@ -48,6 +54,9 @@ public final class ObservabilityServer {
    * @param port the TCP port to listen on
    * @throws IOException if the server cannot be created
    */
+  @SuppressFBWarnings(
+      value = "EI_EXPOSE_REP2",
+      justification = "Registry is shared by design for metrics scraping")
   public ObservabilityServer(PrometheusMeterRegistry prometheusRegistry, int port)
       throws IOException {
     this.prometheusRegistry = prometheusRegistry;
@@ -107,20 +116,10 @@ public final class ObservabilityServer {
     boolean allHealthy = true;
     StringBuilder checksJson = new StringBuilder("[");
     for (int i = 0; i < healthChecks.size(); i++) {
-      HealthCheck check = healthChecks.get(i);
-      boolean healthy = check.isHealthy();
+      boolean healthy = evaluateAndAppendCheck(checksJson, healthChecks.get(i), i == 0);
       if (!healthy) {
         allHealthy = false;
       }
-      if (i > 0) {
-        checksJson.append(",");
-      }
-      checksJson
-          .append("{\"name\":\"")
-          .append(escapeJson(check.getName()))
-          .append("\",\"healthy\":")
-          .append(healthy)
-          .append("}");
     }
     checksJson.append("]");
 
@@ -128,6 +127,35 @@ public final class ObservabilityServer {
     int statusCode = allHealthy ? 200 : 503;
     String body = "{\"status\":\"" + status + "\",\"checks\":" + checksJson + "}";
     sendJsonResponse(exchange, statusCode, body);
+  }
+
+  private boolean evaluateAndAppendCheck(
+      StringBuilder checksJson, HealthCheck check, boolean first) {
+    boolean healthy;
+    String error = null;
+    try {
+      healthy = check.isHealthy();
+    } catch (IllegalStateException e) {
+      healthy = false;
+      error = e.getMessage();
+      LOG.warn(
+          "event=health_check.error check={} error={}",
+          escapeJson(check.getName()),
+          error == null ? e.getClass().getName() : error);
+    }
+    if (!first) {
+      checksJson.append(",");
+    }
+    checksJson
+        .append("{\"name\":\"")
+        .append(escapeJson(check.getName()))
+        .append("\",\"healthy\":")
+        .append(healthy);
+    if (error != null) {
+      checksJson.append(",\"error\":\"").append(escapeJson(error)).append("\"");
+    }
+    checksJson.append("}");
+    return healthy;
   }
 
   private void handleMetrics(HttpExchange exchange) throws IOException {
@@ -177,6 +205,26 @@ public final class ObservabilityServer {
     if (value == null) {
       return "";
     }
-    return value.replace("\\", "\\\\").replace("\"", "\\\"");
+    StringBuilder sb = new StringBuilder(value.length() + 16);
+    for (int i = 0; i < value.length(); i++) {
+      char c = value.charAt(i);
+      switch (c) {
+        case '\\' -> sb.append("\\\\");
+        case '"' -> sb.append("\\\"");
+        case '\n' -> sb.append("\\n");
+        case '\t' -> sb.append("\\t");
+        case '\r' -> sb.append("\\r");
+        case '\b' -> sb.append("\\b");
+        case '\f' -> sb.append("\\f");
+        default -> {
+          if (c < 0x20) {
+            sb.append(String.format("\\u%04x", (int) c));
+          } else {
+            sb.append(c);
+          }
+        }
+      }
+    }
+    return sb.toString();
   }
 }

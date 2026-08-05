@@ -10,6 +10,7 @@ import com.example.rmirefactor.observability.ObservabilityServer;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.rmi.NoSuchObjectException;
+import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
@@ -21,6 +22,7 @@ public final class RmiServer {
   private static final Logger LOG = LoggerFactory.getLogger(RmiServer.class);
 
   private static final int RMI_PORT = 1099;
+
   private static final int HEALTH_PORT = 8081;
 
   private RmiServer() {}
@@ -28,13 +30,13 @@ public final class RmiServer {
   public static void main(String[] args) {
     try {
       start();
-    } catch (Exception e) {
+    } catch (IOException e) {
       LOG.error("event=server.startup_failed", e);
       System.exit(1);
     }
   }
 
-  private static void start() throws RemoteException, IOException {
+  private static void start() throws IOException {
     ObservabilityContext observability = ObservabilityInitializer.initialize();
 
     InMemoryDatabaseConnection database = new InMemoryDatabaseConnection();
@@ -87,7 +89,7 @@ public final class RmiServer {
       try {
         registry.lookup("LedgerRemote");
         return true;
-      } catch (Exception e) {
+      } catch (RemoteException | NotBoundException e) {
         return false;
       }
     }

@@ -4,6 +4,7 @@ import com.example.rmirefactor.ledger.LedgerException;
 import com.example.rmirefactor.ledger.LedgerOperation;
 import com.example.rmirefactor.ledger.LedgerRemote;
 import java.math.BigDecimal;
+import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
@@ -19,7 +20,26 @@ public final class RmiClient {
 
   private RmiClient() {}
 
-  public static void main(String[] args) throws Exception {
+  public static void main(String[] args) {
+    try {
+      run(args);
+    } catch (IllegalArgumentException e) {
+      LOG.error("event=client.command_failed", e);
+      System.out.println("Error: " + e.getMessage());
+    } catch (RemoteException e) {
+      LOG.error("event=client.command_failed", e);
+      System.out.println("Error: Unable to reach the ledger service. Is the server running?");
+    } catch (LedgerException e) {
+      LOG.error("event=client.command_failed", e);
+      System.out.println("Error: " + e.getMessage());
+    } catch (NotBoundException e) {
+      LOG.error("event=client.command_failed", e);
+      System.out.println("Error: Ledger service not found in registry. Is the server running?");
+    }
+  }
+
+  private static void run(String[] args)
+      throws RemoteException, NotBoundException, LedgerException {
     if (args.length < 2) {
       printUsage();
       return;
@@ -33,29 +53,24 @@ public final class RmiClient {
     LedgerRemote ledger = (LedgerRemote) registry.lookup("LedgerRemote");
     LOG.info("event=client.connected service=LedgerRemote");
 
-    try {
-      switch (command) {
-        case "contribute" -> {
-          BigDecimal amount = requireAmount(args, command);
-          ledger.addOrSubtract(planId, amount, LedgerOperation.ADD);
-          System.out.printf("Contributed %s to %s%n", amount, planId);
-        }
-        case "withdraw" -> {
-          BigDecimal amount = requireAmount(args, command);
-          ledger.addOrSubtract(planId, amount, LedgerOperation.SUBTRACT);
-          System.out.printf("Withdrew %s from %s%n", amount, planId);
-        }
-        case "balance" -> {
-          if (args.length != 2) {
-            throw new IllegalArgumentException("balance does not accept an amount");
-          }
-          System.out.printf("Balance for %s: %s%n", planId, ledger.getBalance(planId));
-        }
-        default -> throw new IllegalArgumentException("unknown command: " + command);
+    switch (command) {
+      case "contribute" -> {
+        BigDecimal amount = requireAmount(args, command);
+        ledger.addOrSubtract(planId, amount, LedgerOperation.ADD);
+        System.out.printf("Contributed %s to %s%n", amount, planId);
       }
-    } catch (RemoteException | LedgerException e) {
-      LOG.error("event=client.command_failed command={}", command, e);
-      throw e;
+      case "withdraw" -> {
+        BigDecimal amount = requireAmount(args, command);
+        ledger.addOrSubtract(planId, amount, LedgerOperation.SUBTRACT);
+        System.out.printf("Withdrew %s from %s%n", amount, planId);
+      }
+      case "balance" -> {
+        if (args.length != 2) {
+          throw new IllegalArgumentException("balance does not accept an amount");
+        }
+        System.out.printf("Balance for %s: %s%n", planId, ledger.getBalance(planId));
+      }
+      default -> throw new IllegalArgumentException("unknown command: " + command);
     }
   }
 

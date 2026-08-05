@@ -1,5 +1,6 @@
 package com.example.rmirefactor.observability;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
 import io.micrometer.prometheusmetrics.PrometheusMeterRegistry;
 import io.opentelemetry.api.trace.Tracer;
@@ -14,9 +15,14 @@ import io.opentelemetry.api.trace.Tracer;
 public final class ObservabilityContext implements AutoCloseable {
 
   private final CompositeMeterRegistry meterRegistry;
+
   private final PrometheusMeterRegistry prometheusRegistry;
+
   private final Tracer tracer;
 
+  @SuppressFBWarnings(
+      value = "EI_EXPOSE_REP2",
+      justification = "Registries are shared by design for metrics collection")
   public ObservabilityContext(
       CompositeMeterRegistry meterRegistry,
       PrometheusMeterRegistry prometheusRegistry,
@@ -26,10 +32,16 @@ public final class ObservabilityContext implements AutoCloseable {
     this.tracer = tracer;
   }
 
+  @SuppressFBWarnings(
+      value = "EI_EXPOSE_REP",
+      justification = "Registry is shared by design for metrics collection")
   public CompositeMeterRegistry getMeterRegistry() {
     return meterRegistry;
   }
 
+  @SuppressFBWarnings(
+      value = "EI_EXPOSE_REP",
+      justification = "Registry is shared by design for metrics scraping")
   public PrometheusMeterRegistry getPrometheusRegistry() {
     return prometheusRegistry;
   }

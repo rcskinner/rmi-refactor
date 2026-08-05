@@ -1,6 +1,7 @@
 package com.example.rmirefactor.observability;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -21,12 +22,17 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /** Verifies the {@link ObservabilityServer} HTTP endpoints, headers, and lifecycle. */
+@SuppressWarnings({"PMD.CyclomaticComplexity", "PMD.TooManyMethods"})
 class ObservabilityServerTest {
 
   private PrometheusMeterRegistry prometheusRegistry;
+
   private ObservabilityServer server;
+
   private HttpClient client;
+
   private String baseUrl;
+
   private final ObjectMapper mapper = new ObjectMapper();
 
   @BeforeEach
@@ -241,6 +247,99 @@ class ObservabilityServerTest {
     assertTrue(body.contains("test_counter"), "Metrics should contain registered counter");
   }
 
+  @Test
+  void readyEndpointEscapesNewlineInCheckName() throws Exception {
+    server.registerHealthCheck(new StubHealthCheck("evil\ninjected", true));
+
+    HttpResponse<String> response = sendGet("/health/ready");
+
+    assertEquals(200, response.statusCode());
+    JsonNode body = mapper.readTree(response.body());
+    assertEquals("evil\ninjected", body.get("checks").get(0).get("name").asText());
+    assertFalse(response.body().contains("\n\""), "Raw newline must not appear in JSON");
+  }
+
+  @Test
+  void readyEndpointEscapesTabInCheckName() throws Exception {
+    server.registerHealthCheck(new StubHealthCheck("evil\tinjected", true));
+
+    HttpResponse<String> response = sendGet("/health/ready");
+
+    assertEquals(200, response.statusCode());
+    JsonNode body = mapper.readTree(response.body());
+    assertEquals("evil\tinjected", body.get("checks").get(0).get("name").asText());
+  }
+
+  @Test
+  void readyEndpointEscapesNullCharacterInCheckName() throws Exception {
+    String nullChar = "evil" + (char) 0 + "injected";
+    server.registerHealthCheck(new StubHealthCheck(nullChar, true));
+
+    HttpResponse<String> response = sendGet("/health/ready");
+
+    assertEquals(200, response.statusCode());
+    JsonNode body = mapper.readTree(response.body());
+    assertEquals(nullChar, body.get("checks").get(0).get("name").asText());
+  }
+
+  @Test
+  void readyEndpointEscapesBackslashAndQuoteInCheckName() throws Exception {
+    server.registerHealthCheck(new StubHealthCheck("evil\"\\injected", true));
+
+    HttpResponse<String> response = sendGet("/health/ready");
+
+    assertEquals(200, response.statusCode());
+    JsonNode body = mapper.readTree(response.body());
+    assertEquals("evil\"\\injected", body.get("checks").get(0).get("name").asText());
+  }
+
+  @Test
+  void readyEndpointEscapesMultipleControlCharactersInCheckName() throws Exception {
+    String malicious = "a\nb\tc\r" + (char) 0 + "d" + (char) 1 + "e";
+    server.registerHealthCheck(new StubHealthCheck(malicious, true));
+
+    HttpResponse<String> response = sendGet("/health/ready");
+
+    assertEquals(200, response.statusCode());
+    JsonNode body = mapper.readTree(response.body());
+    assertEquals(malicious, body.get("checks").get(0).get("name").asText());
+  }
+
+  @Test
+  void readyEndpointReturns503WhenHealthCheckThrowsException() throws Exception {
+    server.registerHealthCheck(new ThrowingHealthCheck("throws-check"));
+
+    HttpResponse<String> response = sendGet("/health/ready");
+
+    assertEquals(503, response.statusCode());
+    JsonNode body = mapper.readTree(response.body());
+    assertEquals("DOWN", body.get("status").asText());
+    JsonNode check = body.get("checks").get(0);
+    assertEquals(false, check.get("healthy").asBoolean());
+    assertTrue(check.has("error"), "Failing check should include error indicator");
+  }
+
+  @Test
+  void readyEndpointIncludesErrorIndicatorWhenCheckThrows() throws Exception {
+    server.registerHealthCheck(new ThrowingHealthCheck("boom-check"));
+    server.registerHealthCheck(new StubHealthCheck("healthy-check", true));
+
+    HttpResponse<String> response = sendGet("/health/ready");
+
+    assertEquals(503, response.statusCode());
+    JsonNode body = mapper.readTree(response.body());
+    JsonNode checks = body.get("checks");
+    boolean hasErrorIndicator = false;
+    for (JsonNode check : checks) {
+      if ("boom-check".equals(check.get("name").asText())) {
+        assertEquals(false, check.get("healthy").asBoolean());
+        assertTrue(check.has("error"), "Thrown check should have error field");
+        hasErrorIndicator = true;
+      }
+    }
+    assertTrue(hasErrorIndicator, "Should find the throwing check with error indicator");
+  }
+
   private HttpResponse<String> sendGet(String path) throws Exception {
     HttpRequest request = HttpRequest.newBuilder().uri(URI.create(baseUrl + path)).GET().build();
     return client.send(request, BodyHandlers.ofString(StandardCharsets.UTF_8));
@@ -266,6 +365,7 @@ class ObservabilityServerTest {
 
   private static final class StubHealthCheck implements HealthCheck {
     private final String name;
+
     private final boolean healthy;
 
     StubHealthCheck(String name, boolean healthy) {
@@ -281,6 +381,25 @@ class ObservabilityServerTest {
     @Override
     public boolean isHealthy() {
       return healthy;
+    }
+  }
+
+  private static final class ThrowingHealthCheck implements HealthCheck {
+
+    private final String name;
+
+    ThrowingHealthCheck(String name) {
+      this.name = name;
+    }
+
+    @Override
+    public String getName() {
+      return name;
+    }
+
+    @Override
+    public boolean isHealthy() {
+      throw new IllegalStateException("health check exploded");
     }
   }
 }

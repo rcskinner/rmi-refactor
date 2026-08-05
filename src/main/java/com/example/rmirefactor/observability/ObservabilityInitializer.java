@@ -24,7 +24,9 @@ public final class ObservabilityInitializer {
   private static final Logger LOG = LoggerFactory.getLogger(ObservabilityInitializer.class);
 
   static final String DEFAULT_METRICS_BACKEND = "prometheus";
+
   static final String DEFAULT_DD_URI = "https://api.datadoghq.com";
+
   static final String DEFAULT_SERVICE_NAME = "unknown_service";
 
   private ObservabilityInitializer() {}

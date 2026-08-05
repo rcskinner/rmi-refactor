@@ -77,7 +77,7 @@ class LedgerRemoteImplTest {
             LedgerException.class,
             () -> ledger.addOrSubtract("missing", new BigDecimal("1.00"), LedgerOperation.ADD));
 
-    assertEquals("plan does not exist: missing", exception.getMessage());
+    assertEquals("plan does not exist: ****sing", exception.getMessage());
     verify(database, never())
         .updateBalance(
             org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.any());

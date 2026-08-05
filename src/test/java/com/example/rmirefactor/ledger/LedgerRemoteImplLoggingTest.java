@@ -1,12 +1,14 @@
 package com.example.rmirefactor.ledger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.when;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.classic.spi.IThrowableProxy;
 import com.example.rmirefactor.observability.LoggingTestSupport;
 import java.math.BigDecimal;
 import java.rmi.server.UnicastRemoteObject;
@@ -17,6 +19,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
+@SuppressWarnings("PMD.TooManyMethods")
 class LedgerRemoteImplLoggingTest extends LoggingTestSupport {
   @Mock private DatabaseConnection database;
 
@@ -132,5 +135,80 @@ class LedgerRemoteImplLoggingTest extends LoggingTestSupport {
     assertEquals(1, startCount);
     assertEquals(1, failCount);
     assertEquals(0, completeCount);
+  }
+
+  @Test
+  void redactsPlanIdInAllLogStatementsForAddOrSubtract() throws Exception {
+    String sentinel = "sentinel-plan-abc123def456";
+    when(database.planExists(sentinel)).thenReturn(true);
+    when(database.getBalance(sentinel)).thenReturn(new BigDecimal("100.00"));
+
+    ledger.addOrSubtract(sentinel, new BigDecimal("25.00"), LedgerOperation.ADD);
+
+    for (ILoggingEvent event : appender.list) {
+      assertFalse(
+          event.getFormattedMessage().contains(sentinel),
+          "Raw planId must not appear in log message: " + event.getFormattedMessage());
+    }
+  }
+
+  @Test
+  void redactsPlanIdInAllLogStatementsForGetBalance() throws Exception {
+    String sentinel = "sentinel-plan-abc123def456";
+    when(database.planExists(sentinel)).thenReturn(true);
+    when(database.getBalance(sentinel)).thenReturn(new BigDecimal("100.00"));
+
+    ledger.getBalance(sentinel);
+
+    for (ILoggingEvent event : appender.list) {
+      assertFalse(
+          event.getFormattedMessage().contains(sentinel),
+          "Raw planId must not appear in log message: " + event.getFormattedMessage());
+    }
+  }
+
+  @Test
+  void redactsPlanIdInExceptionMessageAndStackTraceOnFailure() throws Exception {
+    String sentinel = "sentinel-plan-abc123def456";
+    when(database.planExists(sentinel)).thenReturn(false);
+
+    LedgerException ex =
+        assertThrows(
+            LedgerException.class,
+            () -> ledger.addOrSubtract(sentinel, new BigDecimal("1.00"), LedgerOperation.ADD));
+
+    assertFalse(ex.getMessage().contains(sentinel), "LedgerException message must be redacted");
+
+    ILoggingEvent errorEvent =
+        appender.list.stream()
+            .filter(e -> e.getLevel() == Level.ERROR)
+            .findFirst()
+            .orElseThrow(() -> new AssertionError("No ERROR log event found"));
+    assertFalse(
+        errorEvent.getFormattedMessage().contains(sentinel),
+        "Raw planId must not appear in error log message");
+
+    IThrowableProxy proxy = errorEvent.getThrowableProxy();
+    if (proxy != null) {
+      assertFalse(
+          proxy.getMessage().contains(sentinel),
+          "Raw planId must not appear in throwable proxy message");
+    }
+  }
+
+  @Test
+  void redactsPlanIdInInsufficientBalanceException() throws Exception {
+    String sentinel = "sentinel-plan-abc123def456";
+    when(database.planExists(sentinel)).thenReturn(true);
+    when(database.getBalance(sentinel)).thenReturn(new BigDecimal("5.00"));
+
+    LedgerException ex =
+        assertThrows(
+            LedgerException.class,
+            () ->
+                ledger.addOrSubtract(sentinel, new BigDecimal("50.00"), LedgerOperation.SUBTRACT));
+
+    assertFalse(
+        ex.getMessage().contains(sentinel), "Insufficient balance exception must be redacted");
   }
 }
