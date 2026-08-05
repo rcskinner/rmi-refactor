@@ -49,7 +49,7 @@ class LedgerRemoteImplMetricsTest {
     when(database.planExists("plan-1")).thenReturn(true);
     when(database.getBalance("plan-1")).thenReturn(new BigDecimal("100.00"));
 
-    ledger.addOrSubtract("plan-1", new BigDecimal("25.00"), LedgerOperation.ADD);
+    ledger.addOrSubtract("plan-1", new BigDecimal("25.00"), LedgerOperation.ADD, null);
 
     Counter counter =
         registry
@@ -66,7 +66,7 @@ class LedgerRemoteImplMetricsTest {
     when(database.planExists("plan-1")).thenReturn(true);
     when(database.getBalance("plan-1")).thenReturn(new BigDecimal("100.00"));
 
-    ledger.addOrSubtract("plan-1", new BigDecimal("25.00"), LedgerOperation.SUBTRACT);
+    ledger.addOrSubtract("plan-1", new BigDecimal("25.00"), LedgerOperation.SUBTRACT, null);
 
     Counter counter =
         registry
@@ -84,7 +84,7 @@ class LedgerRemoteImplMetricsTest {
 
     assertThrows(
         LedgerException.class,
-        () -> ledger.addOrSubtract("missing", new BigDecimal("1.00"), LedgerOperation.ADD));
+        () -> ledger.addOrSubtract("missing", new BigDecimal("1.00"), LedgerOperation.ADD, null));
 
     Counter counter =
         registry
@@ -100,7 +100,7 @@ class LedgerRemoteImplMetricsTest {
   void counterIncrementsWithResultFailureForFailedGetBalance() throws Exception {
     when(database.planExists("missing")).thenReturn(false);
 
-    assertThrows(LedgerException.class, () -> ledger.getBalance("missing"));
+    assertThrows(LedgerException.class, () -> ledger.getBalance("missing", null));
 
     Counter counter =
         registry
@@ -117,7 +117,7 @@ class LedgerRemoteImplMetricsTest {
     when(database.planExists("plan-1")).thenReturn(true);
     when(database.getBalance("plan-1")).thenReturn(new BigDecimal("100.00"));
 
-    ledger.getBalance("plan-1");
+    ledger.getBalance("plan-1", null);
 
     Counter counter =
         registry
@@ -134,8 +134,8 @@ class LedgerRemoteImplMetricsTest {
     when(database.planExists("plan-1")).thenReturn(true);
     when(database.getBalance("plan-1")).thenReturn(new BigDecimal("100.00"));
 
-    ledger.addOrSubtract("plan-1", new BigDecimal("25.00"), LedgerOperation.ADD);
-    ledger.addOrSubtract("plan-1", new BigDecimal("10.00"), LedgerOperation.ADD);
+    ledger.addOrSubtract("plan-1", new BigDecimal("25.00"), LedgerOperation.ADD, null);
+    ledger.addOrSubtract("plan-1", new BigDecimal("10.00"), LedgerOperation.ADD, null);
 
     Counter counter =
         registry
@@ -152,7 +152,7 @@ class LedgerRemoteImplMetricsTest {
     when(database.planExists("plan-1")).thenReturn(true);
     when(database.getBalance("plan-1")).thenReturn(new BigDecimal("100.00"));
 
-    ledger.addOrSubtract("plan-1", new BigDecimal("25.00"), LedgerOperation.ADD);
+    ledger.addOrSubtract("plan-1", new BigDecimal("25.00"), LedgerOperation.ADD, null);
 
     Timer timer =
         registry
@@ -169,7 +169,7 @@ class LedgerRemoteImplMetricsTest {
     when(database.planExists("plan-1")).thenReturn(true);
     when(database.getBalance("plan-1")).thenReturn(new BigDecimal("100.00"));
 
-    ledger.addOrSubtract("plan-1", new BigDecimal("25.00"), LedgerOperation.SUBTRACT);
+    ledger.addOrSubtract("plan-1", new BigDecimal("25.00"), LedgerOperation.SUBTRACT, null);
 
     Timer timer =
         registry
@@ -186,7 +186,7 @@ class LedgerRemoteImplMetricsTest {
     when(database.planExists("plan-1")).thenReturn(true);
     when(database.getBalance("plan-1")).thenReturn(new BigDecimal("100.00"));
 
-    ledger.getBalance("plan-1");
+    ledger.getBalance("plan-1", null);
 
     Timer timer =
         registry
@@ -204,7 +204,7 @@ class LedgerRemoteImplMetricsTest {
 
     assertThrows(
         LedgerException.class,
-        () -> ledger.addOrSubtract("missing", new BigDecimal("1.00"), LedgerOperation.ADD));
+        () -> ledger.addOrSubtract("missing", new BigDecimal("1.00"), LedgerOperation.ADD, null));
 
     Timer timer =
         registry
@@ -221,9 +221,9 @@ class LedgerRemoteImplMetricsTest {
     when(database.planExists("plan-1")).thenReturn(true);
     when(database.getBalance("plan-1")).thenReturn(new BigDecimal("100.00"));
 
-    ledger.addOrSubtract("plan-1", new BigDecimal("25.00"), LedgerOperation.ADD);
-    ledger.addOrSubtract("plan-1", new BigDecimal("10.00"), LedgerOperation.SUBTRACT);
-    ledger.getBalance("plan-1");
+    ledger.addOrSubtract("plan-1", new BigDecimal("25.00"), LedgerOperation.ADD, null);
+    ledger.addOrSubtract("plan-1", new BigDecimal("10.00"), LedgerOperation.SUBTRACT, null);
+    ledger.getBalance("plan-1", null);
 
     Timer addTimer =
         registry
@@ -261,7 +261,7 @@ class LedgerRemoteImplMetricsTest {
     when(database.planExists("plan-1")).thenReturn(true);
     when(database.getBalance("plan-1")).thenReturn(new BigDecimal("100.00"));
 
-    ledger.addOrSubtract("plan-1", new BigDecimal("25.00"), LedgerOperation.ADD);
+    ledger.addOrSubtract("plan-1", new BigDecimal("25.00"), LedgerOperation.ADD, null);
 
     Gauge gauge = registry.find(LedgerRemoteImpl.GAUGE_NAME).gauge();
     assertNotNull(gauge);
@@ -274,7 +274,7 @@ class LedgerRemoteImplMetricsTest {
 
     assertThrows(
         LedgerException.class,
-        () -> ledger.addOrSubtract("missing", new BigDecimal("1.00"), LedgerOperation.ADD));
+        () -> ledger.addOrSubtract("missing", new BigDecimal("1.00"), LedgerOperation.ADD, null));
 
     Gauge gauge = registry.find(LedgerRemoteImpl.GAUGE_NAME).gauge();
     assertNotNull(gauge);
@@ -299,7 +299,7 @@ class LedgerRemoteImplMetricsTest {
         CompletableFuture.runAsync(
             () -> {
               try {
-                ledger.addOrSubtract("plan-1", new BigDecimal("25.00"), LedgerOperation.ADD);
+                ledger.addOrSubtract("plan-1", new BigDecimal("25.00"), LedgerOperation.ADD, null);
               } catch (RemoteException | LedgerException e) {
                 throw new RuntimeException(e);
               }
@@ -322,12 +322,12 @@ class LedgerRemoteImplMetricsTest {
     when(database.planExists("plan-1")).thenReturn(true);
     when(database.getBalance("plan-1")).thenReturn(new BigDecimal("100.00"));
 
-    ledger.addOrSubtract("plan-1", new BigDecimal("25.00"), LedgerOperation.ADD);
-    ledger.addOrSubtract("plan-1", new BigDecimal("10.00"), LedgerOperation.SUBTRACT);
-    ledger.getBalance("plan-1");
+    ledger.addOrSubtract("plan-1", new BigDecimal("25.00"), LedgerOperation.ADD, null);
+    ledger.addOrSubtract("plan-1", new BigDecimal("10.00"), LedgerOperation.SUBTRACT, null);
+    ledger.getBalance("plan-1", null);
     assertThrows(
         LedgerException.class,
-        () -> ledger.addOrSubtract("plan-1", BigDecimal.ZERO, LedgerOperation.ADD));
+        () -> ledger.addOrSubtract("plan-1", BigDecimal.ZERO, LedgerOperation.ADD, null));
 
     Counter addSuccess =
         registry

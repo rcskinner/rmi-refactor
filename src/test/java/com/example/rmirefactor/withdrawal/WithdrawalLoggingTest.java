@@ -24,7 +24,7 @@ class WithdrawalLoggingTest extends LoggingTestSupport {
   @Test
   void logsStartAndCompletionOnSuccess() throws Exception {
     LedgerRemote ledger = mock(LedgerRemote.class);
-    new Withdrawal(ledger).withdraw("plan-1", new BigDecimal("25.00"));
+    new Withdrawal(ledger).withdraw("plan-1", new BigDecimal("25.00"), null);
 
     List<ILoggingEvent> events = appender.list;
     assertTrue(
@@ -48,11 +48,11 @@ class WithdrawalLoggingTest extends LoggingTestSupport {
     LedgerRemote ledger = mock(LedgerRemote.class);
     doThrow(new LedgerException("insufficient balance for plan: plan-1"))
         .when(ledger)
-        .addOrSubtract("plan-1", new BigDecimal("11.00"), LedgerOperation.SUBTRACT);
+        .addOrSubtract("plan-1", new BigDecimal("11.00"), LedgerOperation.SUBTRACT, null);
 
     assertThrows(
         LedgerException.class,
-        () -> new Withdrawal(ledger).withdraw("plan-1", new BigDecimal("11.00")));
+        () -> new Withdrawal(ledger).withdraw("plan-1", new BigDecimal("11.00"), null));
 
     boolean hasError =
         appender.list.stream()

@@ -65,7 +65,8 @@ public class LedgerRemoteImpl extends UnicastRemoteObject implements LedgerRemot
   }
 
   @Override
-  public void addOrSubtract(String planId, BigDecimal amount, LedgerOperation operation)
+  public void addOrSubtract(
+      String planId, BigDecimal amount, LedgerOperation operation, String traceContext)
       throws RemoteException, LedgerException {
     String opName = operationName(operation);
     LOG.info("event=operation.started operation={} planId={}", opName, SafeLog.last4(planId));
@@ -87,7 +88,8 @@ public class LedgerRemoteImpl extends UnicastRemoteObject implements LedgerRemot
   }
 
   @Override
-  public BigDecimal getBalance(String planId) throws RemoteException, LedgerException {
+  public BigDecimal getBalance(String planId, String traceContext)
+      throws RemoteException, LedgerException {
     LOG.info("event=operation.started operation=balance planId={}", SafeLog.last4(planId));
     inFlightOperations.incrementAndGet();
     Timer.Sample timerSample = Timer.start(meterRegistry);

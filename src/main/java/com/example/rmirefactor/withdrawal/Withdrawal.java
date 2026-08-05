@@ -18,10 +18,11 @@ public class Withdrawal {
     this.ledger = ledger;
   }
 
-  public void withdraw(String planId, BigDecimal amount) throws RemoteException, LedgerException {
+  public void withdraw(String planId, BigDecimal amount, String traceContext)
+      throws RemoteException, LedgerException {
     LOG.info("event=operation.started operation=withdraw planId={}", SafeLog.last4(planId));
     try {
-      ledger.addOrSubtract(planId, amount, LedgerOperation.SUBTRACT);
+      ledger.addOrSubtract(planId, amount, LedgerOperation.SUBTRACT, traceContext);
       LOG.info("event=operation.completed operation=withdraw planId={}", SafeLog.last4(planId));
     } catch (RemoteException | LedgerException e) {
       LOG.error("event=operation.failed operation=withdraw planId={}", SafeLog.last4(planId), e);

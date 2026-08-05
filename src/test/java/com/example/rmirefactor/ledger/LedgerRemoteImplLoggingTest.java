@@ -46,7 +46,7 @@ class LedgerRemoteImplLoggingTest extends LoggingTestSupport {
     when(database.planExists("plan-1")).thenReturn(true);
     when(database.getBalance("plan-1")).thenReturn(new BigDecimal("100.00"));
 
-    ledger.addOrSubtract("plan-1", new BigDecimal("25.00"), LedgerOperation.ADD);
+    ledger.addOrSubtract("plan-1", new BigDecimal("25.00"), LedgerOperation.ADD, null);
 
     List<ILoggingEvent> events = appender.list;
     assertTrue(events.size() >= 2);
@@ -61,7 +61,7 @@ class LedgerRemoteImplLoggingTest extends LoggingTestSupport {
     when(database.planExists("plan-1")).thenReturn(true);
     when(database.getBalance("plan-1")).thenReturn(new BigDecimal("100.00"));
 
-    ledger.getBalance("plan-1");
+    ledger.getBalance("plan-1", null);
 
     List<ILoggingEvent> events = appender.list;
     assertTrue(events.size() >= 2);
@@ -77,7 +77,7 @@ class LedgerRemoteImplLoggingTest extends LoggingTestSupport {
 
     assertThrows(
         LedgerException.class,
-        () -> ledger.addOrSubtract("missing", new BigDecimal("1.00"), LedgerOperation.ADD));
+        () -> ledger.addOrSubtract("missing", new BigDecimal("1.00"), LedgerOperation.ADD, null));
 
     List<ILoggingEvent> events = appender.list;
     assertTrue(events.size() >= 2);
@@ -97,7 +97,7 @@ class LedgerRemoteImplLoggingTest extends LoggingTestSupport {
     when(database.planExists("plan-1")).thenReturn(true);
     when(database.getBalance("plan-1")).thenReturn(new BigDecimal("100.00"));
 
-    ledger.addOrSubtract("plan-1", new BigDecimal("25.00"), LedgerOperation.ADD);
+    ledger.addOrSubtract("plan-1", new BigDecimal("25.00"), LedgerOperation.ADD, null);
 
     List<ILoggingEvent> events = appender.list;
     long startCount =
@@ -120,7 +120,7 @@ class LedgerRemoteImplLoggingTest extends LoggingTestSupport {
 
     assertThrows(
         LedgerException.class,
-        () -> ledger.addOrSubtract("missing", new BigDecimal("1.00"), LedgerOperation.ADD));
+        () -> ledger.addOrSubtract("missing", new BigDecimal("1.00"), LedgerOperation.ADD, null));
 
     List<ILoggingEvent> events = appender.list;
     long startCount =
@@ -143,7 +143,7 @@ class LedgerRemoteImplLoggingTest extends LoggingTestSupport {
     when(database.planExists(sentinel)).thenReturn(true);
     when(database.getBalance(sentinel)).thenReturn(new BigDecimal("100.00"));
 
-    ledger.addOrSubtract(sentinel, new BigDecimal("25.00"), LedgerOperation.ADD);
+    ledger.addOrSubtract(sentinel, new BigDecimal("25.00"), LedgerOperation.ADD, null);
 
     for (ILoggingEvent event : appender.list) {
       assertFalse(
@@ -158,7 +158,7 @@ class LedgerRemoteImplLoggingTest extends LoggingTestSupport {
     when(database.planExists(sentinel)).thenReturn(true);
     when(database.getBalance(sentinel)).thenReturn(new BigDecimal("100.00"));
 
-    ledger.getBalance(sentinel);
+    ledger.getBalance(sentinel, null);
 
     for (ILoggingEvent event : appender.list) {
       assertFalse(
@@ -175,7 +175,8 @@ class LedgerRemoteImplLoggingTest extends LoggingTestSupport {
     LedgerException ex =
         assertThrows(
             LedgerException.class,
-            () -> ledger.addOrSubtract(sentinel, new BigDecimal("1.00"), LedgerOperation.ADD));
+            () ->
+                ledger.addOrSubtract(sentinel, new BigDecimal("1.00"), LedgerOperation.ADD, null));
 
     assertFalse(ex.getMessage().contains(sentinel), "LedgerException message must be redacted");
 
@@ -206,7 +207,8 @@ class LedgerRemoteImplLoggingTest extends LoggingTestSupport {
         assertThrows(
             LedgerException.class,
             () ->
-                ledger.addOrSubtract(sentinel, new BigDecimal("50.00"), LedgerOperation.SUBTRACT));
+                ledger.addOrSubtract(
+                    sentinel, new BigDecimal("50.00"), LedgerOperation.SUBTRACT, null));
 
     assertFalse(
         ex.getMessage().contains(sentinel), "Insufficient balance exception must be redacted");

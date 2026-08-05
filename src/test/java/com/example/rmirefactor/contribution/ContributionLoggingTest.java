@@ -24,7 +24,7 @@ class ContributionLoggingTest extends LoggingTestSupport {
   @Test
   void logsStartAndCompletionOnSuccess() throws Exception {
     LedgerRemote ledger = mock(LedgerRemote.class);
-    new Contribution(ledger).contribute("plan-1", new BigDecimal("50.00"));
+    new Contribution(ledger).contribute("plan-1", new BigDecimal("50.00"), null);
 
     List<ILoggingEvent> events = appender.list;
     assertTrue(
@@ -48,11 +48,11 @@ class ContributionLoggingTest extends LoggingTestSupport {
     LedgerRemote ledger = mock(LedgerRemote.class);
     doThrow(new LedgerException("plan does not exist: missing"))
         .when(ledger)
-        .addOrSubtract("missing", new BigDecimal("1.00"), LedgerOperation.ADD);
+        .addOrSubtract("missing", new BigDecimal("1.00"), LedgerOperation.ADD, null);
 
     assertThrows(
         LedgerException.class,
-        () -> new Contribution(ledger).contribute("missing", new BigDecimal("1.00")));
+        () -> new Contribution(ledger).contribute("missing", new BigDecimal("1.00"), null));
 
     boolean hasError =
         appender.list.stream()

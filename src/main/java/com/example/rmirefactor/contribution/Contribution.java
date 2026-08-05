@@ -18,10 +18,11 @@ public class Contribution {
     this.ledger = ledger;
   }
 
-  public void contribute(String planId, BigDecimal amount) throws RemoteException, LedgerException {
+  public void contribute(String planId, BigDecimal amount, String traceContext)
+      throws RemoteException, LedgerException {
     LOG.info("event=operation.started operation=contribute planId={}", SafeLog.last4(planId));
     try {
-      ledger.addOrSubtract(planId, amount, LedgerOperation.ADD);
+      ledger.addOrSubtract(planId, amount, LedgerOperation.ADD, traceContext);
       LOG.info("event=operation.completed operation=contribute planId={}", SafeLog.last4(planId));
     } catch (RemoteException | LedgerException e) {
       LOG.error("event=operation.failed operation=contribute planId={}", SafeLog.last4(planId), e);

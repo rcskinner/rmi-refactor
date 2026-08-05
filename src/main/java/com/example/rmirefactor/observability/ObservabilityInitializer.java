@@ -9,8 +9,12 @@ import io.micrometer.datadog.DatadogConfig;
 import io.micrometer.datadog.DatadogMeterRegistry;
 import io.micrometer.prometheusmetrics.PrometheusConfig;
 import io.micrometer.prometheusmetrics.PrometheusMeterRegistry;
-import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.trace.Tracer;
+import io.opentelemetry.sdk.OpenTelemetrySdk;
+import io.opentelemetry.sdk.autoconfigure.AutoConfiguredOpenTelemetrySdk;
+import io.opentelemetry.sdk.trace.SdkTracerProvider;
+import java.util.HashMap;
+import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,8 +23,9 @@ import org.slf4j.LoggerFactory;
  *
  * <p>Always creates a {@link PrometheusMeterRegistry} for the {@code /metrics} scraping endpoint.
  * Conditionally creates a {@link DatadogMeterRegistry} when {@code METRICS_BACKEND} is {@code
- * datadog} or {@code composite} and {@code DD_API_KEY} is set. Tracer initialization is a no-op
- * stub at this stage; full tracing comes in milestone 3.
+ * datadog} or {@code composite} and {@code DD_API_KEY} is set. Initializes the OpenTelemetry SDK
+ * with OTLP export via {@link AutoConfiguredOpenTelemetrySdk} and registers a shutdown hook to
+ * flush buffered spans.
  */
 public final class ObservabilityInitializer {
 
@@ -31,6 +36,10 @@ public final class ObservabilityInitializer {
   static final String DEFAULT_DD_URI = "https://api.datadoghq.com";
 
   static final String DEFAULT_SERVICE_NAME = "unknown_service";
+
+  static final String DEFAULT_OTLP_ENDPOINT = "http://localhost:4317";
+
+  static final String DEFAULT_OTLP_PROTOCOL = "grpc";
 
   private ObservabilityInitializer() {}
 
@@ -47,6 +56,7 @@ public final class ObservabilityInitializer {
             System.getenv("DD_API_KEY"),
             System.getenv("DD_URI"),
             System.getenv("OTEL_EXPORTER_OTLP_ENDPOINT"),
+            System.getenv("OTEL_EXPORTER_OTLP_PROTOCOL"),
             System.getenv("OTEL_SERVICE_NAME"));
     Runtime.getRuntime().addShutdownHook(new Thread(context::close));
     return context;
@@ -59,8 +69,8 @@ public final class ObservabilityInitializer {
    * @param metricsBackend value of {@code METRICS_BACKEND} (may be {@code null})
    * @param ddApiKey value of {@code DD_API_KEY} (may be {@code null})
    * @param ddUri value of {@code DD_URI} (may be {@code null})
-   * @param otlpEndpoint value of {@code OTEL_EXPORTER_OTLP_ENDPOINT} (may be {@code null}, reserved
-   *     for milestone 3)
+   * @param otlpEndpoint value of {@code OTEL_EXPORTER_OTLP_ENDPOINT} (may be {@code null})
+   * @param otlpProtocol value of {@code OTEL_EXPORTER_OTLP_PROTOCOL} (may be {@code null})
    * @param serviceName value of {@code OTEL_SERVICE_NAME} (may be {@code null})
    * @return the initialized {@link ObservabilityContext}
    */
@@ -69,6 +79,7 @@ public final class ObservabilityInitializer {
       String ddApiKey,
       String ddUri,
       String otlpEndpoint,
+      String otlpProtocol,
       String serviceName) {
 
     PrometheusMeterRegistry prometheusRegistry =
@@ -95,10 +106,45 @@ public final class ObservabilityInitializer {
       LOG.info("event=metrics.datadog_configured uri={}", resolvedDdUri);
     }
 
-    Tracer tracer = OpenTelemetry.noop().getTracer(resolveServiceName(serviceName));
+    String resolvedServiceName = resolveServiceName(serviceName);
+    SdkTracerProvider tracerProvider =
+        initializeTracing(otlpEndpoint, otlpProtocol, resolvedServiceName);
+    OpenTelemetrySdk sdk = OpenTelemetrySdk.builder().setTracerProvider(tracerProvider).build();
+    Tracer tracer = sdk.getTracer(resolvedServiceName);
 
     LOG.info("event=observability.initialized backend={}", backend);
-    return new ObservabilityContext(composite, prometheusRegistry, tracer);
+    return new ObservabilityContext(composite, prometheusRegistry, tracer, tracerProvider::close);
+  }
+
+  /**
+   * Initializes the OpenTelemetry SDK tracing pipeline from environment-variable-like parameters.
+   *
+   * <p>Uses {@link AutoConfiguredOpenTelemetrySdk} to build the SDK from the supplied properties,
+   * defaulting the OTLP endpoint to {@value #DEFAULT_OTLP_ENDPOINT} and the protocol to {@value
+   * #DEFAULT_OTLP_PROTOCOL} when the parameters are null or blank.
+   *
+   * @param otlpEndpoint the OTLP exporter endpoint (may be {@code null})
+   * @param otlpProtocol the OTLP transport protocol (may be {@code null})
+   * @param serviceName the service name for trace resource attributes
+   * @return the {@link SdkTracerProvider} for shutdown and tracer access
+   */
+  private static SdkTracerProvider initializeTracing(
+      String otlpEndpoint, String otlpProtocol, String serviceName) {
+    Map<String, String> otelProps = new HashMap<>();
+    otelProps.put("otel.exporter.otlp.endpoint", resolveOtlpEndpoint(otlpEndpoint));
+    otelProps.put("otel.exporter.otlp.protocol", resolveOtlpProtocol(otlpProtocol));
+    otelProps.put("otel.service.name", serviceName);
+    otelProps.put("otel.traces.exporter", "otlp");
+    otelProps.put("otel.metrics.exporter", "none");
+    otelProps.put("otel.logs.exporter", "none");
+
+    AutoConfiguredOpenTelemetrySdk autoConfig =
+        AutoConfiguredOpenTelemetrySdk.builder()
+            .addPropertiesSupplier(() -> otelProps)
+            .disableShutdownHook()
+            .build();
+
+    return autoConfig.getOpenTelemetrySdk().getSdkTracerProvider();
   }
 
   private static String resolveBackend(String metricsBackend) {
@@ -123,6 +169,20 @@ public final class ObservabilityInitializer {
       return DEFAULT_DD_URI;
     }
     return ddUri.trim();
+  }
+
+  private static String resolveOtlpEndpoint(String otlpEndpoint) {
+    if (otlpEndpoint == null || otlpEndpoint.isBlank()) {
+      return DEFAULT_OTLP_ENDPOINT;
+    }
+    return otlpEndpoint.trim();
+  }
+
+  private static String resolveOtlpProtocol(String otlpProtocol) {
+    if (otlpProtocol == null || otlpProtocol.isBlank()) {
+      return DEFAULT_OTLP_PROTOCOL;
+    }
+    return otlpProtocol.trim();
   }
 
   private static String resolveServiceName(String serviceName) {

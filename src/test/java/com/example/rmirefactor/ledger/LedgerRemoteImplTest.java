@@ -35,7 +35,7 @@ class LedgerRemoteImplTest {
     when(database.planExists("plan-1")).thenReturn(true);
     when(database.getBalance("plan-1")).thenReturn(new BigDecimal("100.00"));
 
-    ledger.addOrSubtract("plan-1", new BigDecimal("25.00"), LedgerOperation.ADD);
+    ledger.addOrSubtract("plan-1", new BigDecimal("25.00"), LedgerOperation.ADD, null);
 
     verify(database).updateBalance("plan-1", new BigDecimal("125.00"));
   }
@@ -45,7 +45,7 @@ class LedgerRemoteImplTest {
     when(database.planExists("plan-1")).thenReturn(true);
     when(database.getBalance("plan-1")).thenReturn(new BigDecimal("100.00"));
 
-    ledger.addOrSubtract("plan-1", new BigDecimal("25.00"), LedgerOperation.SUBTRACT);
+    ledger.addOrSubtract("plan-1", new BigDecimal("25.00"), LedgerOperation.SUBTRACT, null);
 
     verify(database).updateBalance("plan-1", new BigDecimal("75.00"));
   }
@@ -54,7 +54,7 @@ class LedgerRemoteImplTest {
   void rejectsNegativeAmounts() throws Exception {
     assertThrows(
         LedgerException.class,
-        () -> ledger.addOrSubtract("plan-1", new BigDecimal("-1.00"), LedgerOperation.ADD));
+        () -> ledger.addOrSubtract("plan-1", new BigDecimal("-1.00"), LedgerOperation.ADD, null));
 
     verify(database, never())
         .updateBalance(
@@ -65,7 +65,7 @@ class LedgerRemoteImplTest {
   void rejectsZeroAmounts() throws Exception {
     assertThrows(
         LedgerException.class,
-        () -> ledger.addOrSubtract("plan-1", BigDecimal.ZERO, LedgerOperation.ADD));
+        () -> ledger.addOrSubtract("plan-1", BigDecimal.ZERO, LedgerOperation.ADD, null));
   }
 
   @Test
@@ -75,7 +75,8 @@ class LedgerRemoteImplTest {
     LedgerException exception =
         assertThrows(
             LedgerException.class,
-            () -> ledger.addOrSubtract("missing", new BigDecimal("1.00"), LedgerOperation.ADD));
+            () ->
+                ledger.addOrSubtract("missing", new BigDecimal("1.00"), LedgerOperation.ADD, null));
 
     assertEquals("plan does not exist: ****sing", exception.getMessage());
     verify(database, never())
@@ -88,7 +89,7 @@ class LedgerRemoteImplTest {
     LedgerException exception =
         assertThrows(
             LedgerException.class,
-            () -> ledger.addOrSubtract("plan-1", new BigDecimal("1.00"), null));
+            () -> ledger.addOrSubtract("plan-1", new BigDecimal("1.00"), null, null));
 
     assertEquals("operation is required", exception.getMessage());
   }
@@ -100,7 +101,9 @@ class LedgerRemoteImplTest {
 
     assertThrows(
         LedgerException.class,
-        () -> ledger.addOrSubtract("plan-1", new BigDecimal("11.00"), LedgerOperation.SUBTRACT));
+        () ->
+            ledger.addOrSubtract(
+                "plan-1", new BigDecimal("11.00"), LedgerOperation.SUBTRACT, null));
 
     verify(database, never())
         .updateBalance(

@@ -56,19 +56,19 @@ public final class RmiClient {
     switch (command) {
       case "contribute" -> {
         BigDecimal amount = requireAmount(args, command);
-        ledger.addOrSubtract(planId, amount, LedgerOperation.ADD);
+        ledger.addOrSubtract(planId, amount, LedgerOperation.ADD, null);
         System.out.printf("Contributed %s to %s%n", amount, planId);
       }
       case "withdraw" -> {
         BigDecimal amount = requireAmount(args, command);
-        ledger.addOrSubtract(planId, amount, LedgerOperation.SUBTRACT);
+        ledger.addOrSubtract(planId, amount, LedgerOperation.SUBTRACT, null);
         System.out.printf("Withdrew %s from %s%n", amount, planId);
       }
       case "balance" -> {
         if (args.length != 2) {
           throw new IllegalArgumentException("balance does not accept an amount");
         }
-        System.out.printf("Balance for %s: %s%n", planId, ledger.getBalance(planId));
+        System.out.printf("Balance for %s: %s%n", planId, ledger.getBalance(planId, null));
       }
       default -> throw new IllegalArgumentException("unknown command: " + command);
     }

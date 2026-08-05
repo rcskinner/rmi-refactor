@@ -37,8 +37,8 @@ class RmiIntegrationTest {
   void invokesTheLedgerThroughRmi() throws Exception {
     LedgerRemote remoteLedger = (LedgerRemote) registry.lookup("LedgerRemote");
 
-    remoteLedger.addOrSubtract("plan-1", new BigDecimal("25.00"), LedgerOperation.SUBTRACT);
+    remoteLedger.addOrSubtract("plan-1", new BigDecimal("25.00"), LedgerOperation.SUBTRACT, null);
 
-    assertEquals(new BigDecimal("75.00"), remoteLedger.getBalance("plan-1"));
+    assertEquals(new BigDecimal("75.00"), remoteLedger.getBalance("plan-1", null));
   }
 }

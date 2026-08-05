@@ -18,7 +18,7 @@ class ObservabilityInitializerTest {
   @Test
   void createsPrometheusRegistryByDefault() {
     ObservabilityContext context =
-        ObservabilityInitializer.initialize(null, null, null, null, null);
+        ObservabilityInitializer.initialize(null, null, null, null, null, null);
 
     assertNotNull(context.getMeterRegistry());
     assertNotNull(context.getPrometheusRegistry());
@@ -31,7 +31,7 @@ class ObservabilityInitializerTest {
   @Test
   void createsPrometheusRegistryForExplicitPrometheusBackend() {
     ObservabilityContext context =
-        ObservabilityInitializer.initialize("prometheus", null, null, null, null);
+        ObservabilityInitializer.initialize("prometheus", null, null, null, null, null);
 
     assertNotNull(context.getPrometheusRegistry());
     context.close();
@@ -40,7 +40,7 @@ class ObservabilityInitializerTest {
   @Test
   void doesNotCreateDatadogRegistryWithoutApiKey() {
     ObservabilityContext context =
-        ObservabilityInitializer.initialize("datadog", null, null, null, null);
+        ObservabilityInitializer.initialize("datadog", null, null, null, null, null);
 
     CompositeMeterRegistry composite = context.getMeterRegistry();
     boolean hasDatadog =
@@ -54,7 +54,7 @@ class ObservabilityInitializerTest {
   @Test
   void createsDatadogRegistryWhenBackendIsDatadogAndApiKeyIsSet() {
     ObservabilityContext context =
-        ObservabilityInitializer.initialize("datadog", "test-api-key", null, null, null);
+        ObservabilityInitializer.initialize("datadog", "test-api-key", null, null, null, null);
 
     CompositeMeterRegistry composite = context.getMeterRegistry();
     boolean hasPrometheus =
@@ -72,7 +72,7 @@ class ObservabilityInitializerTest {
   @Test
   void createsBothRegistriesForCompositeBackend() {
     ObservabilityContext context =
-        ObservabilityInitializer.initialize("composite", "test-api-key", null, null, null);
+        ObservabilityInitializer.initialize("composite", "test-api-key", null, null, null, null);
 
     CompositeMeterRegistry composite = context.getMeterRegistry();
     boolean hasPrometheus =
@@ -90,7 +90,7 @@ class ObservabilityInitializerTest {
   @Test
   void fallsBackToPrometheusForUnsupportedBackend() {
     ObservabilityContext context =
-        ObservabilityInitializer.initialize("invalid-backend", "some-key", null, null, null);
+        ObservabilityInitializer.initialize("invalid-backend", "some-key", null, null, null, null);
 
     CompositeMeterRegistry composite = context.getMeterRegistry();
     boolean hasPrometheus =
@@ -108,7 +108,7 @@ class ObservabilityInitializerTest {
   @Test
   void doesNotCreateDatadogForCompositeWithoutApiKey() {
     ObservabilityContext context =
-        ObservabilityInitializer.initialize("composite", null, null, null, null);
+        ObservabilityInitializer.initialize("composite", null, null, null, null, null);
 
     CompositeMeterRegistry composite = context.getMeterRegistry();
     boolean hasDatadog =
@@ -122,7 +122,7 @@ class ObservabilityInitializerTest {
   @Test
   void prometheusRegistryIsUsableForScraping() {
     ObservabilityContext context =
-        ObservabilityInitializer.initialize(null, null, null, null, null);
+        ObservabilityInitializer.initialize(null, null, null, null, null, null);
 
     PrometheusMeterRegistry prometheus = context.getPrometheusRegistry();
     String scrape = prometheus.scrape();
@@ -134,7 +134,7 @@ class ObservabilityInitializerTest {
   @Test
   void meterRegistryAcceptsMeterRegistration() {
     ObservabilityContext context =
-        ObservabilityInitializer.initialize(null, null, null, null, null);
+        ObservabilityInitializer.initialize(null, null, null, null, null, null);
 
     MeterRegistry registry = context.getMeterRegistry();
     registry.counter("test.counter", "tag", "value").increment();
@@ -144,20 +144,39 @@ class ObservabilityInitializerTest {
   }
 
   @Test
-  void tracerIsNotNullNoOpStub() {
+  void tracerIsNotNull() {
     ObservabilityContext context =
-        ObservabilityInitializer.initialize(null, null, null, null, "ledger-server");
+        ObservabilityInitializer.initialize(null, null, null, null, null, "ledger-server");
 
     Tracer tracer = context.getTracer();
-    assertNotNull(tracer, "Tracer should be a non-null no-op stub");
+    assertNotNull(tracer, "Tracer should be non-null");
 
+    context.close();
+  }
+
+  @Test
+  void defaultOtlpEndpointIsLocalhost4317() {
+    assertEquals("http://localhost:4317", ObservabilityInitializer.DEFAULT_OTLP_ENDPOINT);
+  }
+
+  @Test
+  void defaultOtlpProtocolIsGrpc() {
+    assertEquals("grpc", ObservabilityInitializer.DEFAULT_OTLP_PROTOCOL);
+  }
+
+  @Test
+  void contextCloseFlushesSpansWithoutThrowing() {
+    ObservabilityContext context =
+        ObservabilityInitializer.initialize(null, null, null, null, null, null);
+
+    // close() should flush the SDK tracer provider and close meter registries without throwing
     context.close();
   }
 
   @Test
   void jvmMemoryMetricsArePresentInPrometheusScrape() {
     ObservabilityContext context =
-        ObservabilityInitializer.initialize(null, null, null, null, null);
+        ObservabilityInitializer.initialize(null, null, null, null, null, null);
 
     String scrape = context.getPrometheusRegistry().scrape();
     assertTrue(
@@ -173,7 +192,7 @@ class ObservabilityInitializerTest {
   @Test
   void jvmGcMetricsArePresentInPrometheusScrape() {
     ObservabilityContext context =
-        ObservabilityInitializer.initialize(null, null, null, null, null);
+        ObservabilityInitializer.initialize(null, null, null, null, null, null);
 
     String scrape = context.getPrometheusRegistry().scrape();
     assertTrue(scrape.contains("jvm_gc_"), "Prometheus scrape should contain jvm_gc_ metrics");
@@ -184,7 +203,7 @@ class ObservabilityInitializerTest {
   @Test
   void jvmThreadMetricsArePresentInPrometheusScrape() {
     ObservabilityContext context =
-        ObservabilityInitializer.initialize(null, null, null, null, null);
+        ObservabilityInitializer.initialize(null, null, null, null, null, null);
 
     String scrape = context.getPrometheusRegistry().scrape();
     assertTrue(
@@ -199,7 +218,7 @@ class ObservabilityInitializerTest {
     for (String backend : backends) {
       String apiKey = "datadog".equals(backend) || "composite".equals(backend) ? "test-key" : null;
       ObservabilityContext context =
-          ObservabilityInitializer.initialize(backend, apiKey, null, null, null);
+          ObservabilityInitializer.initialize(backend, apiKey, null, null, null, null);
 
       String scrape = context.getPrometheusRegistry().scrape();
       assertTrue(
@@ -218,7 +237,7 @@ class ObservabilityInitializerTest {
   @Test
   void customMetersAppearInPrometheusScrapeViaCompositeRegistry() {
     ObservabilityContext context =
-        ObservabilityInitializer.initialize(null, null, null, null, null);
+        ObservabilityInitializer.initialize(null, null, null, null, null, null);
 
     context
         .getMeterRegistry()
@@ -236,7 +255,7 @@ class ObservabilityInitializerTest {
   @Test
   void datadogRegistryReceivesSameCustomMeters() {
     ObservabilityContext context =
-        ObservabilityInitializer.initialize("datadog", "test-api-key", null, null, null);
+        ObservabilityInitializer.initialize("datadog", "test-api-key", null, null, null, null);
 
     context
         .getMeterRegistry()
@@ -262,7 +281,7 @@ class ObservabilityInitializerTest {
   @Test
   void compositeBackendReceivesSameCustomMetersInBothRegistries() {
     ObservabilityContext context =
-        ObservabilityInitializer.initialize("composite", "test-api-key", null, null, null);
+        ObservabilityInitializer.initialize("composite", "test-api-key", null, null, null, null);
 
     context
         .getMeterRegistry()

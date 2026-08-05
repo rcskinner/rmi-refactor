@@ -20,16 +20,20 @@ public final class ObservabilityContext implements AutoCloseable {
 
   private final Tracer tracer;
 
+  private final Runnable sdkShutdown;
+
   @SuppressFBWarnings(
       value = "EI_EXPOSE_REP2",
       justification = "Registries are shared by design for metrics collection")
   public ObservabilityContext(
       CompositeMeterRegistry meterRegistry,
       PrometheusMeterRegistry prometheusRegistry,
-      Tracer tracer) {
+      Tracer tracer,
+      Runnable sdkShutdown) {
     this.meterRegistry = meterRegistry;
     this.prometheusRegistry = prometheusRegistry;
     this.tracer = tracer;
+    this.sdkShutdown = sdkShutdown;
   }
 
   @SuppressFBWarnings(
@@ -52,6 +56,12 @@ public final class ObservabilityContext implements AutoCloseable {
 
   @Override
   public void close() {
-    meterRegistry.close();
+    try {
+      if (sdkShutdown != null) {
+        sdkShutdown.run();
+      }
+    } finally {
+      meterRegistry.close();
+    }
   }
 }

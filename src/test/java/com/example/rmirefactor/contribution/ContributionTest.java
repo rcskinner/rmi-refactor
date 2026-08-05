@@ -14,8 +14,8 @@ class ContributionTest {
     LedgerRemote ledger = mock(LedgerRemote.class);
     Contribution contribution = new Contribution(ledger);
 
-    contribution.contribute("plan-1", new BigDecimal("50.00"));
+    contribution.contribute("plan-1", new BigDecimal("50.00"), null);
 
-    verify(ledger).addOrSubtract("plan-1", new BigDecimal("50.00"), LedgerOperation.ADD);
+    verify(ledger).addOrSubtract("plan-1", new BigDecimal("50.00"), LedgerOperation.ADD, null);
   }
 }
