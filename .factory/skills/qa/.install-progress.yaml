@@ -1,0 +1,12 @@
+project: rmi-refactor
+default_target: local
+personas_confirmed: [operator]
+critical_flows:
+  - CLI ledger commands and validation errors
+  - HTTP health and Prometheus metrics endpoints
+  - Jaeger services and trace API
+external_services: [Jaeger]
+cleanup: "Stop only services started by the QA run using services.yaml."
+imagemagick: false
+github_actions: true
+failure_learning: suggest_in_report

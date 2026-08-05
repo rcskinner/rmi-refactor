@@ -5,8 +5,9 @@ import java.rmi.Remote;
 import java.rmi.RemoteException;
 
 public interface LedgerRemote extends Remote {
-  void addOrSubtract(String planId, BigDecimal amount, LedgerOperation operation)
+  void addOrSubtract(
+      String planId, BigDecimal amount, LedgerOperation operation, String traceContext)
       throws RemoteException, LedgerException;
 
-  BigDecimal getBalance(String planId) throws RemoteException, LedgerException;
+  BigDecimal getBalance(String planId, String traceContext) throws RemoteException, LedgerException;
 }

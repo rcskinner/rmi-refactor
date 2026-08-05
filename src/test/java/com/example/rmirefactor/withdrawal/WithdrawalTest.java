@@ -14,8 +14,8 @@ class WithdrawalTest {
     LedgerRemote ledger = mock(LedgerRemote.class);
     Withdrawal withdrawal = new Withdrawal(ledger);
 
-    withdrawal.withdraw("plan-1", new BigDecimal("25.00"));
+    withdrawal.withdraw("plan-1", new BigDecimal("25.00"), null);
 
-    verify(ledger).addOrSubtract("plan-1", new BigDecimal("25.00"), LedgerOperation.SUBTRACT);
+    verify(ledger).addOrSubtract("plan-1", new BigDecimal("25.00"), LedgerOperation.SUBTRACT, null);
   }
 }
