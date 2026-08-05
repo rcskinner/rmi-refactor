@@ -42,7 +42,8 @@ public final class RmiServer {
     InMemoryDatabaseConnection database = new InMemoryDatabaseConnection();
     database.createPlan("demo-plan", BigDecimal.ZERO);
 
-    LedgerRemote ledger = new LedgerRemoteImpl(database, observability.getMeterRegistry());
+    LedgerRemote ledger =
+        new LedgerRemoteImpl(database, observability.getMeterRegistry(), observability.getTracer());
     Registry registry = LocateRegistry.createRegistry(RMI_PORT);
     registry.rebind("LedgerRemote", ledger);
 
