@@ -19,6 +19,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 class RmiClientTest {
+  private static final int TEST_RMI_PORT = 12091;
+
   private Registry registry;
 
   private LedgerRemoteImpl ledger;
@@ -28,21 +30,25 @@ class RmiClientTest {
     InMemoryDatabaseConnection database = new InMemoryDatabaseConnection();
     database.createPlan("plan-1", new BigDecimal("100.00"));
     ledger = new LedgerRemoteImpl(database);
-    registry = LocateRegistry.createRegistry(1099);
+    registry = LocateRegistry.createRegistry(TEST_RMI_PORT);
     registry.rebind("LedgerRemote", ledger);
   }
 
   @AfterEach
   void tearDown() throws Exception {
-    UnicastRemoteObject.unexportObject(ledger, true);
-    UnicastRemoteObject.unexportObject(registry, true);
+    if (ledger != null) {
+      UnicastRemoteObject.unexportObject(ledger, true);
+    }
+    if (registry != null) {
+      UnicastRemoteObject.unexportObject(registry, true);
+    }
   }
 
   @Test
   void handlesSupportedCommands() throws Exception {
-    RmiClient.main(new String[] {"contribute", "plan-1", "25.00"});
-    RmiClient.main(new String[] {"withdraw", "plan-1", "10.00"});
-    RmiClient.main(new String[] {"balance", "plan-1"});
+    RmiClient.main(new String[] {"contribute", "plan-1", "25.00"}, "localhost", TEST_RMI_PORT);
+    RmiClient.main(new String[] {"withdraw", "plan-1", "10.00"}, "localhost", TEST_RMI_PORT);
+    RmiClient.main(new String[] {"balance", "plan-1"}, "localhost", TEST_RMI_PORT);
   }
 
   @Test
@@ -58,7 +64,7 @@ class RmiClientTest {
     ByteArrayOutputStream outContent = new ByteArrayOutputStream();
     System.setOut(new PrintStream(outContent, true, StandardCharsets.UTF_8));
     try {
-      RmiClient.main(new String[] {"balance", "plan-1"});
+      RmiClient.main(new String[] {"balance", "plan-1"}, "localhost", TEST_RMI_PORT);
     } finally {
       System.setOut(originalOut);
     }
@@ -84,7 +90,7 @@ class RmiClientTest {
     System.setOut(new PrintStream(outContent));
     System.setErr(new PrintStream(errContent));
     try {
-      RmiClient.main(new String[] {"unknown-command", "plan-1"});
+      RmiClient.main(new String[] {"unknown-command", "plan-1"}, "localhost", TEST_RMI_PORT);
     } finally {
       System.setOut(originalOut);
       System.setErr(originalErr);
@@ -109,7 +115,8 @@ class RmiClientTest {
     System.setOut(new PrintStream(outContent));
     System.setErr(new PrintStream(errContent));
     try {
-      RmiClient.main(new String[] {"balance", "nonexistent-plan-12345"});
+      RmiClient.main(
+          new String[] {"balance", "nonexistent-plan-12345"}, "localhost", TEST_RMI_PORT);
     } finally {
       System.setOut(originalOut);
       System.setErr(originalErr);
@@ -130,7 +137,7 @@ class RmiClientTest {
 
   @Test
   void doesNotThrowExceptionOnError() throws Exception {
-    RmiClient.main(new String[] {"unknown-command", "plan-1"});
-    RmiClient.main(new String[] {"balance", "nonexistent-plan-12345"});
+    RmiClient.main(new String[] {"unknown-command", "plan-1"}, "localhost", TEST_RMI_PORT);
+    RmiClient.main(new String[] {"balance", "nonexistent-plan-12345"}, "localhost", TEST_RMI_PORT);
   }
 }

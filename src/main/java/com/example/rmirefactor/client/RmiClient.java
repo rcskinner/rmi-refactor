@@ -57,8 +57,18 @@ public final class RmiClient {
   }
 
   public static void main(String[] args) {
+    main(args, DEFAULT_HOST, DEFAULT_PORT);
+  }
+
+  /**
+   * Runs the client against an explicitly selected registry endpoint.
+   *
+   * <p>The overload keeps the command-line entry point on the default endpoint while allowing
+   * integration tests to use isolated RMI ports.
+   */
+  public static void main(String[] args, String host, int port) {
     ObservabilityContext observability = ObservabilityInitializer.initialize();
-    RmiClient client = new RmiClient(observability.getTracer());
+    RmiClient client = new RmiClient(observability.getTracer(), host, port);
     try {
       client.run(args);
     } catch (IllegalArgumentException e) {

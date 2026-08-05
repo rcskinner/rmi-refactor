@@ -55,6 +55,7 @@ import org.slf4j.LoggerFactory;
 @Timeout(30)
 @SuppressWarnings("PMD.TooManyMethods")
 class ObservabilityStackIntegrationTest {
+  private static final int TEST_RMI_PORT = 12093;
 
   @RegisterExtension static final OpenTelemetryExtension otel = OpenTelemetryExtension.create();
 
@@ -92,7 +93,7 @@ class ObservabilityStackIntegrationTest {
     database.createPlan("demo-plan", new BigDecimal("100.00"));
     ledger = new LedgerRemoteImpl(database, compositeRegistry, tracer);
 
-    registry = LocateRegistry.createRegistry(1099);
+    registry = LocateRegistry.createRegistry(TEST_RMI_PORT);
     registry.rebind("LedgerRemote", ledger);
 
     healthServer = new ObservabilityServer(prometheusRegistry, 8081);
@@ -113,14 +114,28 @@ class ObservabilityStackIntegrationTest {
 
   @AfterEach
   void tearDown() throws Exception {
-    System.setOut(originalOut);
-    System.setErr(originalErr);
+    if (originalOut != null) {
+      System.setOut(originalOut);
+    }
+    if (originalErr != null) {
+      System.setErr(originalErr);
+    }
     Logger ledgerLogger = (Logger) LoggerFactory.getLogger(LedgerRemoteImpl.class);
-    ledgerLogger.detachAppender(logAppender);
-    healthServer.stop();
-    compositeRegistry.close();
-    UnicastRemoteObject.unexportObject(ledger, true);
-    UnicastRemoteObject.unexportObject(registry, true);
+    if (logAppender != null) {
+      ledgerLogger.detachAppender(logAppender);
+    }
+    if (healthServer != null) {
+      healthServer.stop();
+    }
+    if (compositeRegistry != null) {
+      compositeRegistry.close();
+    }
+    if (ledger != null) {
+      UnicastRemoteObject.unexportObject(ledger, true);
+    }
+    if (registry != null) {
+      UnicastRemoteObject.unexportObject(registry, true);
+    }
   }
 
   @Test
@@ -245,7 +260,7 @@ class ObservabilityStackIntegrationTest {
     ByteArrayOutputStream stdoutBuffer = new ByteArrayOutputStream();
     System.setOut(new PrintStream(stdoutBuffer, true, StandardCharsets.UTF_8));
     try {
-      RmiClient.main(args);
+      RmiClient.main(args, "localhost", TEST_RMI_PORT);
     } finally {
       System.setOut(originalOut);
     }

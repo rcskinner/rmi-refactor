@@ -30,6 +30,7 @@ import org.junit.jupiter.api.Timeout;
  */
 @Timeout(30)
 class CliRegressionIntegrationTest {
+  private static final int TEST_RMI_PORT = 12092;
 
   private Registry registry;
 
@@ -45,7 +46,7 @@ class CliRegressionIntegrationTest {
     database.createPlan("demo-plan", new BigDecimal("100.00"));
     database.createPlan("savings", new BigDecimal("500.00"));
     ledger = new LedgerRemoteImpl(database);
-    registry = LocateRegistry.createRegistry(1099);
+    registry = LocateRegistry.createRegistry(TEST_RMI_PORT);
     registry.rebind("LedgerRemote", ledger);
     originalOut = System.out;
     originalErr = System.err;
@@ -53,16 +54,27 @@ class CliRegressionIntegrationTest {
 
   @AfterEach
   void tearDown() throws Exception {
-    System.setOut(originalOut);
-    System.setErr(originalErr);
-    UnicastRemoteObject.unexportObject(ledger, true);
-    UnicastRemoteObject.unexportObject(registry, true);
+    if (originalOut != null) {
+      System.setOut(originalOut);
+    }
+    if (originalErr != null) {
+      System.setErr(originalErr);
+    }
+    if (ledger != null) {
+      UnicastRemoteObject.unexportObject(ledger, true);
+    }
+    if (registry != null) {
+      UnicastRemoteObject.unexportObject(registry, true);
+    }
   }
 
   @Test
   void contributeCommandWorksAndDisplaysExpectedOutput() {
     String stdout =
-        captureStdout(() -> RmiClient.main(new String[] {"contribute", "demo-plan", "50.00"}));
+        captureStdout(
+            () ->
+                RmiClient.main(
+                    new String[] {"contribute", "demo-plan", "50.00"}, "localhost", TEST_RMI_PORT));
 
     assertTrue(stdout.contains("Contributed"), "stdout should contain contribution confirmation");
     assertTrue(stdout.contains("50.00"), "stdout should contain the contributed amount");
@@ -73,7 +85,10 @@ class CliRegressionIntegrationTest {
   @Test
   void withdrawCommandWorksAndDisplaysExpectedOutput() {
     String stdout =
-        captureStdout(() -> RmiClient.main(new String[] {"withdraw", "demo-plan", "30.00"}));
+        captureStdout(
+            () ->
+                RmiClient.main(
+                    new String[] {"withdraw", "demo-plan", "30.00"}, "localhost", TEST_RMI_PORT));
 
     assertTrue(stdout.contains("Withdrew"), "stdout should contain withdrawal confirmation");
     assertTrue(stdout.contains("30.00"), "stdout should contain the withdrawn amount");
@@ -83,7 +98,10 @@ class CliRegressionIntegrationTest {
 
   @Test
   void balanceCommandWorksAndDisplaysExpectedBalance() {
-    String stdout = captureStdout(() -> RmiClient.main(new String[] {"balance", "demo-plan"}));
+    String stdout =
+        captureStdout(
+            () ->
+                RmiClient.main(new String[] {"balance", "demo-plan"}, "localhost", TEST_RMI_PORT));
 
     assertTrue(stdout.contains("Balance for"), "stdout should contain balance header");
     assertTrue(stdout.contains("demo-plan"), "stdout should contain the plan ID");
@@ -94,7 +112,12 @@ class CliRegressionIntegrationTest {
   @Test
   void negativeAmountIsRejectedWithClearError() {
     String stdout =
-        captureStdout(() -> RmiClient.main(new String[] {"contribute", "demo-plan", "-50.00"}));
+        captureStdout(
+            () ->
+                RmiClient.main(
+                    new String[] {"contribute", "demo-plan", "-50.00"},
+                    "localhost",
+                    TEST_RMI_PORT));
 
     assertTrue(stdout.contains("Error:"), "stdout should contain an error message");
     assertTrue(
@@ -106,7 +129,10 @@ class CliRegressionIntegrationTest {
   @Test
   void zeroAmountIsRejectedWithClearError() {
     String stdout =
-        captureStdout(() -> RmiClient.main(new String[] {"withdraw", "demo-plan", "0"}));
+        captureStdout(
+            () ->
+                RmiClient.main(
+                    new String[] {"withdraw", "demo-plan", "0"}, "localhost", TEST_RMI_PORT));
 
     assertTrue(stdout.contains("Error:"), "stdout should contain an error message");
     assertTrue(
@@ -118,7 +144,10 @@ class CliRegressionIntegrationTest {
   @Test
   void nonexistentPlanFailsWithClearActionableError() {
     String stdout =
-        captureStdout(() -> RmiClient.main(new String[] {"balance", "nonexistent-plan-xyz"}));
+        captureStdout(
+            () ->
+                RmiClient.main(
+                    new String[] {"balance", "nonexistent-plan-xyz"}, "localhost", TEST_RMI_PORT));
 
     assertTrue(stdout.contains("Error:"), "stdout should contain an error message");
     assertTrue(
@@ -132,9 +161,18 @@ class CliRegressionIntegrationTest {
 
   @Test
   void contributeThenWithdrawThenBalanceProducesConsistentState() {
-    captureStdout(() -> RmiClient.main(new String[] {"contribute", "demo-plan", "50.00"}));
-    captureStdout(() -> RmiClient.main(new String[] {"withdraw", "demo-plan", "20.00"}));
-    String stdout = captureStdout(() -> RmiClient.main(new String[] {"balance", "demo-plan"}));
+    captureStdout(
+        () ->
+            RmiClient.main(
+                new String[] {"contribute", "demo-plan", "50.00"}, "localhost", TEST_RMI_PORT));
+    captureStdout(
+        () ->
+            RmiClient.main(
+                new String[] {"withdraw", "demo-plan", "20.00"}, "localhost", TEST_RMI_PORT));
+    String stdout =
+        captureStdout(
+            () ->
+                RmiClient.main(new String[] {"balance", "demo-plan"}, "localhost", TEST_RMI_PORT));
 
     assertTrue(stdout.contains("130"), "balance should reflect 100 + 50 - 20 = 130");
   }

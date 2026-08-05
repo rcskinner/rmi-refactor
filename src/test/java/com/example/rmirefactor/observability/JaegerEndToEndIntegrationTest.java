@@ -58,6 +58,7 @@ import org.slf4j.LoggerFactory;
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @SuppressWarnings({"PMD.TooManyMethods", "PMD.CyclomaticComplexity"})
 class JaegerEndToEndIntegrationTest {
+  private static final int TEST_RMI_PORT = 12094;
 
   private static final String JAEGER_API = "http://localhost:16686";
 
@@ -103,7 +104,7 @@ class JaegerEndToEndIntegrationTest {
     database.createPlan("demo-plan", new BigDecimal("100.00"));
 
     ledger = new LedgerRemoteImpl(database, serverCtx.getMeterRegistry(), serverCtx.getTracer());
-    registry = LocateRegistry.createRegistry(1099);
+    registry = LocateRegistry.createRegistry(TEST_RMI_PORT);
     registry.rebind("LedgerRemote", ledger);
 
     healthServer = new ObservabilityServer(prometheusRegistry, 8081);
