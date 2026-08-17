@@ -31,6 +31,31 @@ For each task:
 3. Implement the change with matching tests and documentation.
 4. Validate locally and report commands and results.
 
+## Local observability workflow
+
+When validating metrics, traces, logs, or Grafana dashboards on Windows, use
+the master scripts rather than starting individual processes:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\start-local.ps1 `
+  -GenerateLoad -DurationSeconds 120 -RequestsPerSecond 3 -Workers 2
+```
+
+The load generator is intentionally bounded. Confirm that the Java server is
+still listening on ports `1099` and `8081` before diagnosing an empty dashboard.
+Verify the Grafana dashboard at
+`http://localhost:3000/d/rmi-refactor-overview/rmi-refactor-deployment-overview`,
+then stop the environment with:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\stop-local.ps1
+```
+
+For trace-specific checks, use the Tempo datasource in Grafana Explore and
+look for `ledger-loadgen` within the active time range. For failure-path
+checks, run the load generator with `-Mode failure`; this exercises the
+error-rate, top-erroring-resources, and failed-traced-operations panels.
+
 ## Suggested Droid roles
 
 - **Explorer:** map the codebase, dependencies, and likely change points without

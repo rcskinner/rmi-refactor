@@ -6,6 +6,7 @@ import com.example.rmirefactor.ledger.LedgerRemote;
 import com.example.rmirefactor.observability.ObservabilityContext;
 import com.example.rmirefactor.observability.ObservabilityInitializer;
 import com.example.rmirefactor.observability.TraceContextCarrier;
+import com.example.rmirefactor.observability.TraceLogContext;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.api.trace.StatusCode;
@@ -119,7 +120,8 @@ public final class RmiClient {
     Span span = startClientSpan("contribute", "addOrSubtract", planId);
     span.setAttribute(ATTR_OPERATION, "add");
     span.setAttribute(ATTR_AMOUNT, amount.doubleValue());
-    try (Scope scope = span.makeCurrent()) {
+    try (Scope scope = span.makeCurrent();
+        TraceLogContext ignored = TraceLogContext.forSpan(span)) {
       String traceContext = TraceContextCarrier.inject(Context.current());
       ledger.addOrSubtract(planId, amount, LedgerOperation.ADD, traceContext);
       System.out.printf("Contributed %s to %s%n", amount, planId);
@@ -138,7 +140,8 @@ public final class RmiClient {
     Span span = startClientSpan("withdraw", "addOrSubtract", planId);
     span.setAttribute(ATTR_OPERATION, "subtract");
     span.setAttribute(ATTR_AMOUNT, amount.doubleValue());
-    try (Scope scope = span.makeCurrent()) {
+    try (Scope scope = span.makeCurrent();
+        TraceLogContext ignored = TraceLogContext.forSpan(span)) {
       String traceContext = TraceContextCarrier.inject(Context.current());
       ledger.addOrSubtract(planId, amount, LedgerOperation.SUBTRACT, traceContext);
       System.out.printf("Withdrew %s from %s%n", amount, planId);
@@ -157,7 +160,8 @@ public final class RmiClient {
       throw new IllegalArgumentException("balance does not accept an amount");
     }
     Span span = startClientSpan("balance", "getBalance", planId);
-    try (Scope scope = span.makeCurrent()) {
+    try (Scope scope = span.makeCurrent();
+        TraceLogContext ignored = TraceLogContext.forSpan(span)) {
       String traceContext = TraceContextCarrier.inject(Context.current());
       BigDecimal balance = ledger.getBalance(planId, traceContext);
       System.out.printf("Balance for %s: %s%n", planId, balance);

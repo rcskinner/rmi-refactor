@@ -2,6 +2,7 @@ package com.example.rmirefactor.ledger;
 
 import com.example.rmirefactor.observability.SafeLog;
 import com.example.rmirefactor.observability.TraceContextCarrier;
+import com.example.rmirefactor.observability.TraceLogContext;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
@@ -115,18 +116,22 @@ public class LedgerRemoteImpl extends UnicastRemoteObject implements LedgerRemot
       span.setAttribute(ATTR_AMOUNT, amount.doubleValue());
     }
 
-    LOG.info("event=operation.started operation={} planId={}", opName, SafeLog.last4(planId));
     inFlightOperations.incrementAndGet();
     Timer.Sample timerSample = Timer.start(meterRegistry);
     String result = RESULT_SUCCESS;
-    try (Scope scope = span.makeCurrent()) {
+    try (Scope scope = span.makeCurrent();
+        TraceLogContext ignored = TraceLogContext.forSpan(span)) {
+      LOG.info("event=operation.started operation={} planId={}", opName, SafeLog.last4(planId));
       validateAndApply(planId, amount, operation);
       LOG.info("event=operation.completed operation={} planId={}", opName, SafeLog.last4(planId));
     } catch (LedgerException | RemoteException e) {
       result = RESULT_FAILURE;
       span.recordException(e);
       span.setStatus(StatusCode.ERROR);
-      LOG.error("event=operation.failed operation={} planId={}", opName, SafeLog.last4(planId), e);
+      try (TraceLogContext ignored = TraceLogContext.forSpan(span)) {
+        LOG.error(
+            "event=operation.failed operation={} planId={}", opName, SafeLog.last4(planId), e);
+      }
       throw e;
     } finally {
       timerSample.stop(meterRegistry.timer(TIMER_NAME, TAG_OPERATION, opName));
@@ -150,11 +155,12 @@ public class LedgerRemoteImpl extends UnicastRemoteObject implements LedgerRemot
     span.setAttribute(ATTR_RPC_METHOD, "getBalance");
     span.setAttribute(ATTR_PLAN_ID, planId);
 
-    LOG.info("event=operation.started operation=balance planId={}", SafeLog.last4(planId));
     inFlightOperations.incrementAndGet();
     Timer.Sample timerSample = Timer.start(meterRegistry);
     String result = RESULT_SUCCESS;
-    try (Scope scope = span.makeCurrent()) {
+    try (Scope scope = span.makeCurrent();
+        TraceLogContext ignored = TraceLogContext.forSpan(span)) {
+      LOG.info("event=operation.started operation=balance planId={}", SafeLog.last4(planId));
       BigDecimal balance = lookupBalance(planId);
       LOG.info("event=operation.completed operation=balance planId={}", SafeLog.last4(planId));
       return balance;
@@ -162,7 +168,9 @@ public class LedgerRemoteImpl extends UnicastRemoteObject implements LedgerRemot
       result = RESULT_FAILURE;
       span.recordException(e);
       span.setStatus(StatusCode.ERROR);
-      LOG.error("event=operation.failed operation=balance planId={}", SafeLog.last4(planId), e);
+      try (TraceLogContext ignored = TraceLogContext.forSpan(span)) {
+        LOG.error("event=operation.failed operation=balance planId={}", SafeLog.last4(planId), e);
+      }
       throw e;
     } finally {
       timerSample.stop(meterRegistry.timer(TIMER_NAME, TAG_OPERATION, "balance"));

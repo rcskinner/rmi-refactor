@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Stops the RMI server and Jaeger container started by start-observability.ps1.
+  Stops the RMI server and Docker observability stack.
 
 .NOTES
   Run from the repository root:  powershell -ExecutionPolicy Bypass -File scripts\stop-observability.ps1
@@ -20,14 +20,13 @@ if ($serverPid) {
     Write-Host "[SKIP] RMI server is not running" -ForegroundColor DarkGray
 }
 
-# --- 2. Stop Jaeger container ---
-$jaegerRunning = docker ps --filter "name=^jaeger$" --format "{{.Names}}" 2>$null
-if ($jaegerRunning -eq "jaeger") {
-    Write-Host "Stopping Jaeger container..." -ForegroundColor Yellow
-    docker stop jaeger 2>&1 | Out-Null
-    Write-Host "[OK] Jaeger container stopped" -ForegroundColor Green
+# --- 2. Stop Docker observability stack ---
+Write-Host "Stopping Docker observability stack..." -ForegroundColor Yellow
+docker compose -f "$PSScriptRoot\..\docker-compose.observability.yml" down 2>&1 | Out-Null
+if ($LASTEXITCODE -eq 0) {
+    Write-Host "[OK] Docker observability stack stopped" -ForegroundColor Green
 } else {
-    Write-Host "[SKIP] Jaeger container is not running" -ForegroundColor DarkGray
+    Write-Host "[WARN] Docker observability stack was not running" -ForegroundColor DarkGray
 }
 
 # --- 3. Verify ports are released ---
