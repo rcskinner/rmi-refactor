@@ -25,6 +25,8 @@ public final class RmiServer {
 
   private static final int HEALTH_PORT = 8081;
 
+  private static final String DEFAULT_OBSERVABILITY_BIND_HOST = "127.0.0.1";
+
   private RmiServer() {}
 
   public static void main(String[] args) {
@@ -48,14 +50,17 @@ public final class RmiServer {
     registry.rebind("LedgerRemote", ledger);
 
     ObservabilityServer healthServer =
-        new ObservabilityServer(observability.getPrometheusRegistry(), HEALTH_PORT);
+        new ObservabilityServer(
+            observability.getPrometheusRegistry(), resolveObservabilityBindHost(), HEALTH_PORT);
     healthServer.registerHealthCheck(new RmiRegistryHealthCheck(registry));
     healthServer.start();
 
     LOG.info("event=server.started service=LedgerRemote port={}", RMI_PORT);
     LOG.info("event=server.bound service=LedgerRemote name=LedgerRemote");
     LOG.info(
-        "event=health_server.started host=127.0.0.1 port={}", healthServer.getAddress().getPort());
+        "event=health_server.started host={} port={}",
+        healthServer.getAddress().getHostString(),
+        healthServer.getAddress().getPort());
 
     Runtime.getRuntime()
         .addShutdownHook(
@@ -70,6 +75,13 @@ public final class RmiServer {
                   }
                   observability.close();
                 }));
+  }
+
+  private static String resolveObservabilityBindHost() {
+    String configured = System.getenv("OBSERVABILITY_BIND_HOST");
+    return configured == null || configured.isBlank()
+        ? DEFAULT_OBSERVABILITY_BIND_HOST
+        : configured.trim();
   }
 
   /** Health check that verifies the RMI registry has the LedgerRemote service bound. */

@@ -1,0 +1,35 @@
+local.file_match "ledger_logs" {
+  path_targets = [
+    {
+      "__path__" = "/var/log/ledger/*.jsonl",
+      "service_name" = "ledger-server",
+    },
+  ]
+}
+
+loki.source.file "ledger_logs" {
+  targets    = local.file_match.ledger_logs.targets
+  forward_to = [loki.process.ledger_logs.receiver]
+}
+
+loki.process "ledger_logs" {
+  stage.json {
+    expressions = {
+      trace_id = "trace_id",
+      span_id  = "span_id",
+    }
+  }
+  stage.labels {
+    values = {
+      trace_id = "",
+      span_id  = "",
+    }
+  }
+  forward_to = [loki.write.local.receiver]
+}
+
+loki.write "local" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}

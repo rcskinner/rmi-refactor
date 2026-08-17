@@ -21,6 +21,7 @@ out/
 tmp/
 target/
 *.log
+logs/
 
 # Dependency caches
 .cache/

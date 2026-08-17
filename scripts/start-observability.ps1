@@ -1,13 +1,13 @@
 <#
 .SYNOPSIS
-  Starts Jaeger and the RMI server with full observability enabled.
+  Starts the RMI server with full observability enabled.
 
 .DESCRIPTION
-  1. Starts a Jaeger all-in-one Docker container (UI on 16686, OTLP on 4317/4318)
-  2. Compiles the project and copies Maven dependencies
-  3. Starts the RMI server in the background with OTEL_SERVICE_NAME=ledger-server
-  4. Waits for the health endpoint to respond
-  5. Prints the URLs you can open and CLI commands you can run
+  Start the Docker observability stack first with:
+    docker compose -f docker-compose.observability.yml up -d
+
+  This script then compiles the project, starts the RMI server, waits for the
+  health endpoint, and prints the URLs and CLI commands to use.
 
 .NOTES
   Run from the repository root:  powershell -ExecutionPolicy Bypass -File scripts\start-observability.ps1
@@ -19,17 +19,12 @@ $RepoRoot = Split-Path -Parent $PSScriptRoot
 
 Write-Host "=== Starting Observability Stack ===" -ForegroundColor Cyan
 
-# --- 1. Start Jaeger ---
-$jaegerRunning = docker ps --filter "name=^jaeger$" --format "{{.Names}}" 2>$null
-if ($jaegerRunning -eq "jaeger") {
-    Write-Host "[OK] Jaeger container is already running" -ForegroundColor Green
-} else {
-    Write-Host "Starting Jaeger container..." -ForegroundColor Yellow
-    docker run --rm --name jaeger -d -p 16686:16686 -p 4317:4317 -p 4318:4318 jaegertracing/all-in-one:1.76.0 | Out-Null
-    if ($LASTEXITCODE -ne 0) { throw "Failed to start Jaeger container" }
-    Start-Sleep -Seconds 3
-    Write-Host "[OK] Jaeger container started" -ForegroundColor Green
+# --- 1. Verify Tempo OTLP receiver ---
+$tempoPort = Get-NetTCPConnection -LocalPort 4317 -State Listen -ErrorAction SilentlyContinue
+if (-not $tempoPort) {
+    throw "Tempo is not listening on port 4317. Run: docker compose -f docker-compose.observability.yml up -d"
 }
+Write-Host "[OK] Tempo OTLP receiver is available on port 4317" -ForegroundColor Green
 
 # --- 2. Compile and copy dependencies ---
 Write-Host "Compiling project and copying dependencies..." -ForegroundColor Yellow
@@ -50,12 +45,19 @@ if ($serverPid) {
     Write-Host "[OK] RMI server is already running (PID $serverPid)" -ForegroundColor Green
 } else {
     Write-Host "Starting RMI server with observability..." -ForegroundColor Yellow
+    $logDirectory = Join-Path $RepoRoot "logs"
+    New-Item -ItemType Directory -Force -Path $logDirectory | Out-Null
+    $serverLog = Join-Path $logDirectory "ledger-server.jsonl"
+    $serverStdout = Join-Path $logDirectory "ledger-server.stdout.log"
     $env:OTEL_SERVICE_NAME = "ledger-server"
     $env:OTEL_EXPORTER_OTLP_ENDPOINT = "http://localhost:4317"
+    $env:OBSERVABILITY_BIND_HOST = "0.0.0.0"
     $serverProcess = Start-Process -FilePath "java" `
         -ArgumentList "-cp", "target/classes;target/dependency/*", "com.example.rmirefactor.server.RmiServer" `
         -WorkingDirectory $RepoRoot `
-        -NoNewWindow -PassThru
+        -RedirectStandardError $serverLog `
+        -RedirectStandardOutput $serverStdout `
+        -PassThru
     Write-Host "[OK] RMI server started (PID $($serverProcess.Id))" -ForegroundColor Green
 }
 
@@ -79,7 +81,8 @@ if ($healthy) {
 Write-Host ""
 Write-Host "=== Observability Stack is Running ===" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "Jaeger UI:        http://localhost:16686" -ForegroundColor White
+Write-Host "Grafana:           http://localhost:3000" -ForegroundColor White
+Write-Host "Tempo API:         http://localhost:3200" -ForegroundColor White
 Write-Host "Health (live):    http://127.0.0.1:8081/health/live" -ForegroundColor White
 Write-Host "Health (ready):   http://127.0.0.1:8081/health/ready" -ForegroundColor White
 Write-Host "Metrics:          http://127.0.0.1:8081/metrics" -ForegroundColor White

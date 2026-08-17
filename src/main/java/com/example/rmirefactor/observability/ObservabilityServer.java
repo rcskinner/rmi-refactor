@@ -14,8 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * JDK {@link HttpServer} bound to loopback ({@code 127.0.0.1}) providing health-check and metrics
- * endpoints.
+ * JDK {@link HttpServer} providing health-check and metrics endpoints.
  *
  * <ul>
  *   <li>{@code GET /health/live} &mdash; 200 {@code {"status":"UP"}} always.
@@ -39,8 +38,6 @@ public final class ObservabilityServer {
 
   private static final String CACHE_CONTROL_NO_STORE = "no-store";
 
-  private static final String LOOPBACK_HOST = "127.0.0.1";
-
   private final HttpServer server;
 
   private final List<HealthCheck> healthChecks;
@@ -59,9 +56,25 @@ public final class ObservabilityServer {
       justification = "Registry is shared by design for metrics scraping")
   public ObservabilityServer(PrometheusMeterRegistry prometheusRegistry, int port)
       throws IOException {
+    this(prometheusRegistry, "127.0.0.1", port);
+  }
+
+  /**
+   * Creates a new server bound to the selected host and port.
+   *
+   * @param prometheusRegistry the registry to scrape for the {@code /metrics} endpoint
+   * @param bindHost host or interface address to bind
+   * @param port TCP port to listen on
+   * @throws IOException if the server cannot be created
+   */
+  @SuppressFBWarnings(
+      value = "EI_EXPOSE_REP2",
+      justification = "Registry is shared by design for metrics scraping")
+  public ObservabilityServer(PrometheusMeterRegistry prometheusRegistry, String bindHost, int port)
+      throws IOException {
     this.prometheusRegistry = prometheusRegistry;
     this.healthChecks = new CopyOnWriteArrayList<>();
-    this.server = HttpServer.create(new InetSocketAddress(LOOPBACK_HOST, port), 0);
+    this.server = HttpServer.create(new InetSocketAddress(bindHost, port), 0);
     server.createContext("/health/live", this::handleLive);
     server.createContext("/health/ready", this::handleReady);
     server.createContext("/metrics", this::handleMetrics);
@@ -81,7 +94,7 @@ public final class ObservabilityServer {
     server.start();
     LOG.info(
         "event=health_server.started host={} port={}",
-        LOOPBACK_HOST,
+        server.getAddress().getHostString(),
         server.getAddress().getPort());
   }
 

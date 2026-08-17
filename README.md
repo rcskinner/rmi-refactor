@@ -98,7 +98,7 @@ The HTTP observability server binds to `127.0.0.1:8081` and exposes:
 Non-GET health requests return `405`, and health responses use
 `Cache-Control: no-store`. Distributed traces use OpenTelemetry with W3C
 trace-context propagation through RMI and OTLP gRPC export. The default local
-backends are Prometheus and Jaeger; Datadog can be selected through environment
+backends are Prometheus and Tempo; Datadog can be selected through environment
 variables.
 
 ## Environment Variables
@@ -114,10 +114,30 @@ variables.
 
 ## Starting with Observability
 
-Start Jaeger and copy the runtime dependencies:
+The recommended Windows workflow starts the Docker observability stack, the
+Java RMI server, and optional dashboard traffic with one command:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\start-local.ps1 `
+  -GenerateLoad -DurationSeconds 300 -RequestsPerSecond 3 -Workers 2
+```
+
+This starts Grafana, Prometheus, Tempo, Loki, Alloy, and the Java server. The
+load generator is bounded and stops after `-DurationSeconds`; use a larger
+duration when you want traffic to continue. Stop all local processes and
+containers with:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\stop-local.ps1
+```
+
+For a stack without generated traffic, omit `-GenerateLoad`.
+
+The lower-level setup, useful when debugging individual components, starts
+Tempo and copies the runtime dependencies:
 
 ```shell
-docker run --rm --name jaeger -d -p 16686:16686 -p 4317:4317 -p 4318:4318 jaegertracing/all-in-one:1.76.0
+docker compose -f docker-compose.observability.yml up -d
 mvn dependency:copy-dependencies -DoutputDirectory=target/dependency -q
 ```
 
@@ -138,13 +158,70 @@ curl http://127.0.0.1:8081/health/live
 curl http://127.0.0.1:8081/metrics
 ```
 
-The observability ports are `8081` for HTTP health and metrics, `16686` for
-the Jaeger UI, `4317` for Jaeger OTLP gRPC, and `4318` for Jaeger OTLP HTTP.
+The observability ports are `8081` for HTTP health and metrics, `3000` for
+Grafana, `3200` for Tempo, `4317` for OTLP gRPC, and `4318` for OTLP HTTP.
+
+### Grafana on Docker
+
+The repository includes a Docker-based local stack in
+`docker-compose.observability.yml`. It runs Grafana, Prometheus, Tempo, Loki,
+and Grafana Alloy while the Java server remains on the host:
+
+```powershell
+docker compose -f docker-compose.observability.yml up -d
+powershell -ExecutionPolicy Bypass -File scripts\start-observability.ps1
+```
+
+Or use the master lifecycle scripts:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\start-local.ps1
+powershell -ExecutionPolicy Bypass -File scripts\stop-local.ps1
+```
+
+Start the stack with a bounded mixed load generator in the background:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\start-local.ps1 `
+  -GenerateLoad -DurationSeconds 300 -RequestsPerSecond 3 -Workers 2
+```
+
+Open Grafana at [http://localhost:3000](http://localhost:3000). Prometheus,
+Tempo, and Loki datasources are provisioned automatically. The startup script
+binds the host metrics endpoint to `0.0.0.0` and writes JSON logs to
+`logs/ledger-server.jsonl` for Alloy. Run
+`docker compose -f docker-compose.observability.yml down` to stop the Docker
+stack.
+
+Structured logs include `trace_id` and `span_id` while a traced RMI operation
+is active. Grafana can use those fields to navigate between Loki logs and
+Tempo traces.
+
+### Generating dashboard traffic
+
+Use the load generator after starting the server and observability stack:
+
+```powershell
+# Mixed successful contributes, withdrawals, and balances
+powershell -ExecutionPolicy Bypass -File scripts\generate-load.ps1 `
+  -DurationSeconds 120 -RequestsPerSecond 3 -Workers 2
+
+# Deliberate missing-plan failures for the trace error panels
+powershell -ExecutionPolicy Bypass -File scripts\generate-load.ps1 `
+  -Mode failure -DurationSeconds 60 -RequestsPerSecond 2 -Workers 2
+```
+
+Each request creates a trace and the generator uses the service name
+`ledger-loadgen`. Increase `-RequestsPerSecond` or `-Workers` for more traffic,
+then open the dashboard's **Trace / Request Health** section. The failure mode
+updates the error-rate, top-erroring-resources, and failed-traced-operations
+panels without changing the valid `demo-plan` balance.
 
 ## Viewing Traces
 
-Open [http://localhost:16686](http://localhost:16686) in a browser and select
-the `ledger-server` or `ledger-cli` service to inspect RMI operation traces.
+Open Grafana at [http://localhost:3000](http://localhost:3000), select Explore,
+and choose the Tempo datasource. Select the `ledger-server` or `ledger-cli`
+service to inspect RMI operation traces.
 The OTLP endpoint can also be pointed at a Datadog Agent with
 `OTEL_EXPORTER_OTLP_ENDPOINT`.
 
