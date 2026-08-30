@@ -15,7 +15,7 @@
         <mockito.version>5.12.0</mockito.version>
         <checkstyle.version>3.6.0</checkstyle.version>
         <jacoco.version>0.8.12</jacoco.version>
-        <javadoc.version>3.7.0</javadoc.version>
+        <javadoc.version>3.12.0</javadoc.version>
         <spotbugs.version>4.8.6.6</spotbugs.version>
         <pmd.version>3.25.0</pmd.version>
         <spotless.version>2.44.0</spotless.version>
